@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+# "app/src-tauri" is added in Task 4, once that crate exists.
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/loutrx/chip-flashr"
+rust-version = "1.88"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+flashr-core = { path = "crates/flashr-core" }
