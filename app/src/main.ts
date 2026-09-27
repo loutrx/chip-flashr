@@ -1,3 +1,7 @@
+import '@fontsource-variable/bricolage-grotesque/opsz.css';
+import '@fontsource-variable/instrument-sans';
+import '@fontsource-variable/jetbrains-mono';
+
 import { mount } from 'svelte';
 import App from './App.svelte';
 import './styles/tokens.css';
