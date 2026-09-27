@@ -15,7 +15,7 @@ flowchart LR
 
 | Plan | Scope | Milestone | Status |
 |---|---|---|---|
-| [1 · Foundations](2026-09-26-plan-1-foundations.md) | Cargo workspace, `flashr-core` (domain types, `FlashBackend` trait, mock backend), Tauri 2 shell, Svelte 5 frontend with a demo flash screen wired end to end, CI on Windows/macOS/Linux | M1 | Ready |
+| [1 · Foundations](2026-09-26-plan-1-foundations.md) | Cargo workspace, `flashr-core` (domain types, `FlashBackend` trait, mock backend), Tauri 2 shell, Svelte 5 frontend with a demo flash screen wired end to end, CI on Windows/macOS/Linux | M1 | Done |
 | 2 · Design system & app shell | Local fonts, clay components (buttons, cards, pills, family selector), top bar, instructions panel layout, Simple/Expert switch, FR/EN i18n, light/dark | M1 | To write after plan 1 |
 | 3 · Simple-mode screens | Screens 01 to 11 from [ux-design.md](../../ux-design.md), driven by the app state machine from [architecture.md](../../architecture.md#application-states), on the mock backend | M1 | To write |
 | 4 · Firmware packages | `flashr-package` + `flashr-config`: watched folders, zip, `flasher_args.json`, partition tables, Arduino/PlatformIO, HEX/ELF, naming, validation, live README panel | M2 | To write |
