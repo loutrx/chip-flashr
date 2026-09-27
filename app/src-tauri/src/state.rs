@@ -69,7 +69,7 @@ mod tests {
         let state = AppState::from_env();
         assert_eq!(
             state.find("mock:nrf").map(|(_, t)| t.label),
-            Some("DK simulé · nRF52840".to_string())
+            Some("nRF52840".to_string())
         );
         assert!(state.find("serial:COM99").is_none());
     }

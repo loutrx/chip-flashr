@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { flashReducer, toUserFacingError, type FlashAction, type FlashState } from './lib/flashState';
   import { appInfo, cancelFlash, flashDemo, listTargets } from './lib/ipc';
-  import { errorMessages, phaseLabel } from './lib/messages';
+  import { phaseLabel } from './lib/i18n/format';
+  import { t } from './lib/i18n/index.svelte';
   import type { AppInfo, Target } from './lib/types';
 
   let info = $state<AppInfo | null>(null);
@@ -63,7 +64,7 @@
           <div class="fill" style:width="{flash.percent}%"></div>
         </div>
         <div class="row">
-          <span class="phase">{phaseLabel(flash.phase)}</span>
+          <span class="phase">{phaseLabel(flash.phase, t())}</span>
           <button type="button" class="secondary" onclick={() => cancelFlash()}>Annuler</button>
         </div>
       </section>
@@ -77,8 +78,8 @@
       </section>
     {:else if flash.status === 'failure'}
       <section class="card err">
-        <h2>{errorMessages[flash.error.code].title}</h2>
-        <p>{errorMessages[flash.error.code].explanation}</p>
+        <h2>{t().errors[flash.error.code].title}</h2>
+        <p>{t().errors[flash.error.code].explanation}</p>
         <details>
           <summary>Détails techniques</summary>
           <code>{flash.error.technical}</code>

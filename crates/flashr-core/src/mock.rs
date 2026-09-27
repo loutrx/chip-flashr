@@ -22,9 +22,9 @@ impl MockBackend {
     /// The simulated board for a family.
     pub fn target(family: Family) -> Target {
         let (id, label) = match family {
-            Family::Esp32 => ("mock:esp32", "Carte simulée · ESP32-S3"),
-            Family::Stm32 => ("mock:stm32", "Sonde simulée · STM32F411"),
-            Family::Nrf => ("mock:nrf", "DK simulé · nRF52840"),
+            Family::Esp32 => ("mock:esp32", "ESP32-S3"),
+            Family::Stm32 => ("mock:stm32", "STM32F411"),
+            Family::Nrf => ("mock:nrf", "nRF52840"),
         };
         Target {
             id: id.into(),
