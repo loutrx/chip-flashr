@@ -1,3 +1,7 @@
+mod commands;
+mod jobs;
+mod state;
+
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -21,7 +25,13 @@ fn app_info() -> AppInfo {
 
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![app_info])
+        .manage(state::AppState::from_env())
+        .invoke_handler(tauri::generate_handler![
+            app_info,
+            commands::list_targets,
+            commands::flash_demo,
+            commands::cancel_flash
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Chip Flashr");
 }
