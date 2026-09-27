@@ -4042,3 +4042,28 @@ tokens.css and the measured values; plan 2 marked done."
 - In a browser (`pnpm dev`) and in the app (`pnpm tauri dev`), the shell matches the mockups in light and dark (Task 9, step 1); French and English switch at once and survive a restart; program, cancel and failure paths work; Expert folds the instructions into the rail.
 - No request leaves the machine at runtime: fonts are bundled.
 - CI is green on `ubuntu-22.04`, `macos-latest` and `windows-latest` once the branch is pushed (pushing and opening the PR only happens when asked).
+
+---
+
+## Execution notes (2026-09-27)
+
+Executed with subagents in parallel waves (T1∥T2 → T3∥T4∥T5 → T6∥T7 → T8 → visual check), each task reviewed, then a whole-branch review and one fix wave. Final state: 90 frontend tests, 38 Rust tests, `svelte-check` 0/0, `pnpm tauri build --no-bundle` OK. Decisions taken on the plan's behalf:
+
+- **Radii and literals.** `18px` / `13px` radii use `--cf-radius-card` / `--cf-radius-control`; other radii stay literal (no token exists). The artifact-only rgba highlights (TopBar logo, ResultHero badge) stay literal; the progress stripe became a themed `--cf-stripe` token (dark value `rgba(0,0,0,.14)` is derived: the dark fill is cream).
+- **Design source.** Where the JPG mockups in `docs/assets/screens/` and the design artifact disagree (progress percent 64 px, result badge 96 px / icon 48 px / title 34 px, family tile weight 500), the artifact's inline CSS wins, as the spec says.
+- **Réglages** is full width, without instructions panel or rail (artifact `Reglages` page); the English-switch test checks the panel after "Back".
+- **Mode switch** resets the instructions panel only when the mode actually changes; clicking the mode from Réglages still returns to the main view.
+- **Select** uses `appearance: none` and a rotated `chevronRight`, so WKWebView keeps the sunken clay look.
+- **Accessibility.** The result heading takes focus when it appears; a polite live region announces "Programmation en cours" followed by the keep-plugged warning.
+- **Narrow windows.** Below about 1065 px (panel open) the selected family's check becomes a corner badge (container query), so the name never overlaps it.
+- **Start-up theme** lives in `startupTheme()` (`settings.ts`), tested; plan 5 must keep a synchronous copy when settings move to IPC.
+- **CI** fails if `app/dist` contains `googleapis` or the browser-preview code.
+
+Gotchas met on the way:
+
+- Vitest 5 mocks every `.css` import, `?raw` included, unless `test.css.include` matches it (`/tokens\.css/`).
+- jsdom dispatches clicks to disabled buttons and Svelte 5's delegated handler runs when the target is the button itself: `Button` passes no handler while disabled.
+- Under GitButler, `git diff` against the index can be empty or misleading; compare commits (`old..new`) instead.
+- A GitHub Actions guard written as `! grep …` on two lines does not fail the job (`set -e` ignores negated commands); keep one `&&` chain.
+
+Open for the user: the desktop window's 760 px height includes the title bar (web content 1200 × 728); the start-up listing error shows the backend's technical text inside the French sentence.

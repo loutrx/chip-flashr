@@ -67,6 +67,7 @@ UI copy is in French in these mockups; the app ships in French and English.
 - **Clay buttons:** soft outer shadow + inner highlight at rest; lift on hover, sink on press. The selected chip family looks *pressed in*.
 - **Motion:** breathing status dots, striped progress bar, pop-in success check, all disabled under `prefers-reduced-motion`.
 - **Accessibility:** real buttons and labels, 4.5:1 text contrast, colour never the only signal, 44 px minimum targets on primary actions.
+- **Exact values:** the colours and shadows, in light and dark, and the shared card and control radii live in `app/src/styles/tokens.css`. A few artifact-only highlights and component-specific radii stay literal in their components. The values were measured on the design artifact, with a few dark ones derived from it; see the [plan 2 spec](superpowers/specs/2026-09-27-design-system-design.md#clay-tokens-measured-on-the-artifact).
 
 ## Next design pass (planned)
 
