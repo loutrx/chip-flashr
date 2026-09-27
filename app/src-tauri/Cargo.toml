@@ -1,0 +1,20 @@
+[package]
+name = "chip-flashr"
+description = "Flash ESP32, STM32 and Nordic nRF microcontrollers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "chip_flashr_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde.workspace = true
+serde_json.workspace = true
+flashr-core.workspace = true

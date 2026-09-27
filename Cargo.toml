@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 # "app/src-tauri" is added in Task 4, once that crate exists.
-members = ["crates/*"]
+members = ["crates/*", "app/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
