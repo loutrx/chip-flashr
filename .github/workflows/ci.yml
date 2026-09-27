@@ -58,6 +58,13 @@ jobs:
           pnpm build
         working-directory: app
 
+      # The release bundle must not load remote fonts nor ship the dev-only preview backend.
+      # One line: bash -e ignores a failing `!` command unless it is the step's last.
+      - name: Bundle guards
+        run: |
+          ! grep -rq googleapis dist && ! grep -rq 'simulated disconnect' dist
+        working-directory: app
+
       - name: Rust format
         run: cargo fmt --all -- --check
 
