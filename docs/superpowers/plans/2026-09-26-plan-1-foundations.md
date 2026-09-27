@@ -8,7 +8,7 @@
 
 **Tech Stack:** Rust (edition 2024, stable) · Tauri 2 · serde · thiserror · Svelte 5 (runes) · Vite · TypeScript · Vitest · pnpm · GitHub Actions.
 
-**Spec:** [docs/architecture.md](../../architecture.md) (crates, backend contract, data flow, errors), [docs/decisions/0001-rust-and-tauri.md](../../decisions/0001-rust-and-tauri.md), [docs/ux-design.md](../../ux-design.md) (visual tokens), [docs/roadmap.md](../../roadmap.md) (M1 "done when").
+**Spec:** [docs/superpowers/specs/2026-09-26-foundations-design.md](../specs/2026-09-26-foundations-design.md) (scope, decisions D1–D9, acceptance) · background: [docs/architecture.md](../../architecture.md) (crates, backend contract, data flow, errors), [docs/decisions/0001-rust-and-tauri.md](../../decisions/0001-rust-and-tauri.md), [docs/ux-design.md](../../ux-design.md) (visual tokens), [docs/roadmap.md](../../roadmap.md) (M1 "done when").
 
 ## Global Constraints
 

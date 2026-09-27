@@ -10,6 +10,7 @@ Short notes explaining **why** things are the way they are. Each one has a conte
 | [0004](0004-single-executable-and-config.md) | Single executable; config in the OS folder, portable override | Accepted |
 | [0005](0005-chip-family-selector.md) | Always-visible chip family selector, preselected when certain | Accepted |
 | [0006](0006-instructions-panel.md) | Instructions panel rendered from a README next to the executable | Accepted |
+| [0007](0007-svelte-frontend.md) | Svelte 5 + Vite + TypeScript for the frontend | Accepted |
 
 Template:
 
