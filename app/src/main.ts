@@ -4,10 +4,11 @@ import '@fontsource-variable/jetbrains-mono';
 
 import { mount } from 'svelte';
 import App from './App.svelte';
+import { pickBackend } from './lib/ipc';
 import './styles/tokens.css';
 import './styles/base.css';
 
 const target = document.getElementById('app');
 if (!target) throw new Error('#app element missing from index.html');
 
-export default mount(App, { target });
+export default mount(App, { target, props: { backend: pickBackend() } });

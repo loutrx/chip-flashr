@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { flashReducer, toUserFacingError, type FlashAction, type FlashState } from './lib/flashState';
-  import { appInfo, cancelFlash, flashDemo, listTargets } from './lib/ipc';
+  import type { Backend } from './lib/ipc';
   import { phaseLabel } from './lib/i18n/format';
   import { t } from './lib/i18n/index.svelte';
   import type { AppInfo, Target } from './lib/types';
+
+  let { backend }: { backend: Backend } = $props();
 
   let info = $state<AppInfo | null>(null);
   let targets = $state<Target[]>([]);
@@ -19,8 +21,8 @@
   }
 
   onMount(async () => {
-    info = await appInfo();
-    targets = await listTargets();
+    info = await backend.appInfo();
+    targets = await backend.listTargets();
     selectedId = targets[0]?.id ?? null;
   });
 
@@ -28,7 +30,7 @@
     if (!selected || busy) return;
     dispatch({ type: 'start' });
     try {
-      const report = await flashDemo(selected.id, (event) => dispatch({ type: 'progress', event }));
+      const report = await backend.flashDemo(selected.id, (event) => dispatch({ type: 'progress', event }));
       dispatch({ type: 'success', report });
     } catch (error) {
       dispatch({ type: 'failure', error: toUserFacingError(error) });
@@ -65,7 +67,7 @@
         </div>
         <div class="row">
           <span class="phase">{phaseLabel(flash.phase, t())}</span>
-          <button type="button" class="secondary" onclick={() => cancelFlash()}>Annuler</button>
+          <button type="button" class="secondary" onclick={() => backend.cancelFlash()}>Annuler</button>
         </div>
       </section>
     {:else if flash.status === 'success'}
