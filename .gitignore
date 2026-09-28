@@ -26,3 +26,6 @@ app/dist/
 
 # Tauri generated schemas
 app/src-tauri/gen/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
