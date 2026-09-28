@@ -105,6 +105,27 @@ Details: [docs/user-guide.md](docs/user-guide.md) · [docs/firmware-packages.md]
 
 More: [docs/chip-support.md](docs/chip-support.md)
 
+## Development
+
+Requirements: [Rust](https://rustup.rs) (stable), [Node.js](https://nodejs.org) 22+, [pnpm](https://pnpm.io) 10+, and on Linux the [Tauri system packages](https://v2.tauri.app/start/prerequisites/#linux).
+
+```bash
+cd app
+pnpm install
+pnpm tauri dev          # run the app (hot reload for the UI)
+```
+
+```bash
+cargo test --workspace  # Rust tests (repo root)
+pnpm -C app test        # UI tests
+```
+
+The app currently runs on a **simulated backend**. Set `CHIP_FLASHR_MOCK_FAIL_AT=41` to make the simulated board fail at 41 % and see the error path.
+
+To work on the UI without the desktop shell, run `pnpm dev` in `app/` and open http://localhost:5173 in any browser: a development build runs on a TypeScript copy of the simulated board. Add `?failAt=41` to the URL to see the failure path.
+
+Layout: `crates/flashr-core` (domain types, `FlashBackend` trait, mock), `app/src-tauri` (Tauri shell, commands, jobs), `app/src` (Svelte UI). Implementation plans: [docs/superpowers/plans](docs/superpowers/plans/README.md).
+
 ## Documentation
 
 | Document | What's inside |

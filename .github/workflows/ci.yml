@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    # bash everywhere: Windows' default pwsh only checks the last command of a multi-line step.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux system dependencies (Tauri)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Frontend install
+        run: pnpm install --frozen-lockfile
+        working-directory: app
+
+      - name: Frontend check and tests
+        run: |
+          pnpm check
+          pnpm test
+          pnpm build
+        working-directory: app
+
+      # The release bundle must not load remote fonts nor ship the dev-only preview backend.
+      # One line: bash -e ignores a failing `!` command unless it is the step's last.
+      - name: Bundle guards
+        run: |
+          ! grep -rq googleapis dist && ! grep -rq 'simulated disconnect' dist
+        working-directory: app
+
+      - name: Rust format
+        run: cargo fmt --all -- --check
+
+      - name: Rust lint
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --workspace
+
+      - name: Release build (no installer)
+        run: pnpm tauri build --no-bundle
+        working-directory: app

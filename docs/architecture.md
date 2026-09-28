@@ -14,8 +14,8 @@ flowchart TB
     end
 
     subgraph shell["Tauri shell · src-tauri"]
-        cmds["Commands<br/>list_firmwares · select · flash · cancel · erase"]
-        events["Events<br/>firmware://changed · devices://changed<br/>flash://progress · readme://changed"]
+        cmds["Commands<br/>list_firmwares · select · flash · cancel · erase<br/>(flash progress streams over a Channel)"]
+        events["Events<br/>firmware://changed · devices://changed<br/>readme://changed"]
         watch["Folder watcher<br/>(notify)"]
         usbw["USB hot-plug watcher"]
     end
@@ -75,9 +75,8 @@ chip-flashr/
 │   ├── flashr-probe/          # STM32 + nRF backend (probe-rs as a library)
 │   ├── flashr-dfu/            # STM32 ROM bootloader over USB DFU (M5)
 │   └── flashr-nordic/         # nrfutil / nrfjprog wrapper for recover & edge cases (M6)
-├── app/
-│   ├── src-tauri/             # Tauri commands, events, watchers, packaging
-│   └── ui/                    # frontend (framework chosen in M1)
+├── app/                       # Svelte 5 + Vite + TypeScript frontend (package.json, src/)
+│   └── src-tauri/             # Tauri shell: commands, jobs, state, packaging
 └── docs/
 ```
 
@@ -92,9 +91,6 @@ Every chip family implements the same trait. The app only knows about `FlashBack
 pub trait FlashBackend: Send + Sync {
     /// Which chip families this backend can program.
     fn families(&self) -> &'static [Family];
-
-    /// External tools or drivers this backend needs, with install guidance.
-    fn requirements(&self) -> Vec<Requirement>;
 
     /// Boards / probes currently reachable (serial ports, probes, DFU devices).
     fn discover(&self) -> Result<Vec<Target>, FlashError>;
@@ -116,12 +112,13 @@ pub trait FlashBackend: Send + Sync {
 }
 ```
 
+A `requirements()` method (external tools or drivers a backend needs, with install guidance) joins the trait with the first real backend.
+
 ```mermaid
 classDiagram
     class FlashBackend {
         <<trait>>
         +families() Family[]
-        +requirements() Requirement[]
         +discover() Target[]
         +identify(Target) ChipInfo
         +flash(Target, FlashPlan, ProgressSink, CancelToken) FlashReport
@@ -184,14 +181,14 @@ sequenceDiagram
     loop each region
         B->>C: erase + write
         B-->>S: progress(phase, bytes)
-        S-->>UI: flash://progress
+        S-->>UI: progress over the Channel
     end
     B->>C: verify, then reset
     B-->>S: FlashReport
     S-->>UI: success or UserFacingError
 ```
 
-Flashing is blocking I/O. Each job runs on a dedicated worker (`spawn_blocking`), reports through a `ProgressSink` bridged to Tauri events, and can be cancelled between blocks with a `CancelToken`.
+Flashing is blocking I/O. Each job runs on a dedicated worker (`spawn_blocking`), reports through a `ProgressSink` that forwards each event over a Tauri `Channel` passed to the command, and can be cancelled between blocks with a `CancelToken`.
 
 ## Application states
 
@@ -236,15 +233,12 @@ See [ADR 0004](decisions/0004-single-executable-and-config.md).
 
 ## Errors are for humans
 
-Every failure is mapped to a `UserFacingError` before it reaches the UI:
+Every failure crosses to the UI as a `UserFacingError`: a stable **code** plus the raw technical detail. The UI owns the wording (title, explanation, likely causes, actions) per code and per language, so Rust never ships user-facing sentences:
 
 ```rust
 pub struct UserFacingError {
-    pub title: String,               // "La programmation a échoué"
-    pub explanation: String,         // plain words, no jargon
-    pub likely_causes: Vec<Cause>,   // ranked, each with a concrete action
-    pub actions: Vec<Action>,        // Retry · Open driver page · Export report…
-    pub technical: String,           // raw error, shown only under "Technical details"
+    pub code: ErrorCode,     // cancelled · target-not-found · invalid-plan · family-mismatch · device-error · already-running
+    pub technical: String,   // raw error, shown only under "Technical details"
 }
 ```
 

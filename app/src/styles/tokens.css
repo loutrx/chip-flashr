@@ -1,0 +1,95 @@
+/* Theme-independent tokens. */
+:root {
+  --cf-radius-card: 18px;
+  --cf-radius-control: 13px;
+
+  --cf-font-display: 'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif;
+  --cf-font-ui: 'Instrument Sans Variable', 'Segoe UI', system-ui, sans-serif;
+  --cf-font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', Menlo, monospace;
+}
+
+/* Light is also the default until main.ts sets data-theme. */
+:root,
+:root[data-theme='light'] {
+  --cf-ground: #e3e1dc;
+  --cf-surface: #fbf8f1;
+  --cf-surface-2: #f2ede3;
+  --cf-surface-3: #e6e0d4;
+  --cf-line: #d8d1c3;
+  --cf-ink: #1b1a18;
+  --cf-muted: #57534c;
+  --cf-faint: #67625a;
+  --cf-primary: #262420;
+  --cf-on-primary: #fbf8f1;
+  --cf-selection: #eee4d0;
+  --cf-ok: #2c7550;
+  --cf-ok-weak: #e1efe3;
+  --cf-warn: #945800;
+  --cf-warn-weak: #f8ebd3;
+  --cf-err: #b0281f;
+  --cf-err-weak: #f8e3df;
+  --cf-raised: #fbf8f1;
+  --cf-raised-line: #e3dbcc;
+  --cf-disabled: #dad5cb;
+  --cf-on-disabled: #67625a;
+  --cf-console: #1f1d1a;
+  --cf-on-console: #e6dfd1;
+  --cf-stripe: rgba(255, 255, 255, 0.14);
+
+  --cf-shadow-raised: 0 10px 18px -10px rgba(70, 55, 35, 0.45), 0 3px 0 0 #d5cbb8, inset 0 2px 0 #ffffff,
+    inset 0 -3px 6px rgba(120, 100, 70, 0.13);
+  --cf-shadow-raised-active: 0 2px 6px -4px rgba(70, 55, 35, 0.4), 0 1px 0 0 #d5cbb8,
+    inset 0 3px 7px rgba(120, 100, 70, 0.25);
+  --cf-shadow-primary: 0 12px 22px -10px rgba(27, 26, 24, 0.55), 0 4px 0 0 #0c0b0a,
+    inset 0 2px 0 rgba(255, 255, 255, 0.16), inset 0 -4px 8px rgba(0, 0, 0, 0.38);
+  --cf-shadow-primary-active: 0 4px 10px -6px rgba(27, 26, 24, 0.5), 0 1px 0 0 #0c0b0a,
+    inset 0 3px 7px rgba(0, 0, 0, 0.5);
+  --cf-shadow-sunken: inset 0 3px 9px rgba(110, 90, 60, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.8);
+  --cf-shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 28px -22px rgba(60, 48, 30, 0.45);
+  --cf-shadow-tile: inset 0 2px 0 rgba(255, 255, 255, 0.7), inset 0 -3px 6px rgba(120, 100, 70, 0.12);
+  --cf-shadow-tile-strong: inset 0 2px 0 rgba(255, 255, 255, 0.14), inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --cf-ground: #151412;
+  --cf-surface: #1f1d1a;
+  --cf-surface-2: #272420;
+  --cf-surface-3: #312d28;
+  --cf-line: #3a3530;
+  --cf-ink: #f0eadd;
+  --cf-muted: #b6aea1;
+  --cf-faint: #a8a093;
+  --cf-primary: #efe6d3;
+  --cf-on-primary: #1b1a18;
+  --cf-selection: #3a3329;
+  --cf-ok: #6cc794;
+  --cf-ok-weak: #1c2e22;
+  --cf-warn: #e8ad55;
+  --cf-warn-weak: #33280f;
+  --cf-err: #f08a7e;
+  --cf-err-weak: #3a1d19;
+  --cf-raised: #2a2723;
+  --cf-raised-line: #3a3530;
+  --cf-disabled: #312d28;
+  --cf-on-disabled: #a8a093;
+  --cf-console: #151412;
+  --cf-on-console: #e6dfd1;
+  /* Derived: the dark fill is cream, so the moving stripe darkens it instead of lightening it. */
+  --cf-stripe: rgba(0, 0, 0, 0.14);
+
+  --cf-shadow-raised: 0 10px 18px -10px rgba(0, 0, 0, 0.8), 0 3px 0 0 #0e0d0c, inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  --cf-shadow-raised-active: 0 2px 6px -4px rgba(0, 0, 0, 0.7), 0 1px 0 0 #0e0d0c, inset 0 3px 7px rgba(0, 0, 0, 0.45);
+  --cf-shadow-primary: 0 12px 22px -10px rgba(0, 0, 0, 0.75), 0 4px 0 0 #b3a68c,
+    inset 0 2px 0 rgba(255, 255, 255, 0.75), inset 0 -4px 8px rgba(120, 100, 70, 0.28);
+  --cf-shadow-primary-active: 0 4px 10px -6px rgba(0, 0, 0, 0.7), 0 1px 0 0 #b3a68c,
+    inset 0 3px 7px rgba(120, 100, 70, 0.4);
+  --cf-shadow-sunken: inset 0 3px 9px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  --cf-shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 28px -22px rgba(0, 0, 0, 0.8);
+  --cf-shadow-tile: inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  --cf-shadow-tile-strong: inset 0 2px 0 rgba(255, 255, 255, 0.14), inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+
+  color-scheme: dark;
+}
