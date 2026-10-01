@@ -9,11 +9,12 @@ pub mod progress;
 pub mod scenario;
 pub mod snapshot;
 pub mod target;
+pub mod world;
 
 pub use backend::FlashBackend;
 pub use error::{ErrorCode, FlashError, UserFacingError};
 pub use family::Family;
-pub use mock::{MockBackend, demo_plan};
+pub use mock::MockBackend;
 pub use plan::{EraseScope, FlashPlan, PlanError, Region};
 pub use progress::{CancelToken, Phase, ProgressEvent, ProgressSink, RecordingSink};
 pub use scenario::{
@@ -25,3 +26,4 @@ pub use snapshot::{
     GuessReason, ImageEntry, LockKind, Readme, Snapshot, SourceKind, ToolStatus, WatchedFolder,
 };
 pub use target::{ChipInfo, FlashReport, Link, Target};
+pub use world::{SimulatedWorld, plan_for};

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use crate::{
     CancelToken, ChipInfo, EraseScope, Family, FlashBackend, FlashError, FlashPlan, FlashReport,
-    Link, Phase, ProgressEvent, ProgressSink, Region, Target,
+    Link, Phase, ProgressEvent, ProgressSink, Target,
 };
 
 /// Size of one simulated write, like a flash sector.
@@ -89,6 +89,7 @@ impl FlashBackend for MockBackend {
                 bytes_total: total,
             })
         };
+        let mut log = vec![format!("connect {}", target.label)];
 
         emit(Phase::Connecting, 0);
         self.pause(cancel)?;
@@ -98,13 +99,19 @@ impl FlashBackend for MockBackend {
         let mut done: u64 = 0;
         let count = plan.regions.len();
         for (index, region) in plan.regions.iter().enumerate() {
-            for chunk in region.data.chunks(CHUNK) {
+            let blocks = region.data.len().div_ceil(CHUNK);
+            for (n, chunk) in region.data.chunks(CHUNK).enumerate() {
                 self.pause(cancel)?;
                 done += chunk.len() as u64;
                 if let Some(limit) = self.fail_at_percent
                     && done * 100 >= u64::from(limit) * total
                 {
-                    return Err(FlashError::Device("simulated disconnect".into()));
+                    // Blocks are counted within the image being written.
+                    let block = n + 1;
+                    let at = u64::from(region.address) + (n * CHUNK) as u64;
+                    return Err(FlashError::Device(format!(
+                        "write block {block}/{blocks} @ {at:#010x}\nerror: simulated disconnect"
+                    )));
                 }
                 let phase = Phase::Writing {
                     index,
@@ -114,20 +121,28 @@ impl FlashBackend for MockBackend {
                 };
                 emit(phase, done);
             }
+            log.push(format!(
+                "write {:#x} {} {} B",
+                region.address,
+                region.label,
+                region.data.len()
+            ));
         }
 
         if plan.verify {
             emit(Phase::Verifying, done);
             self.pause(cancel)?;
+            log.push("verify ok".into());
         }
         if plan.reset_after {
             emit(Phase::Resetting, done);
+            log.push("reset".into());
         }
         Ok(FlashReport {
             bytes_written: done,
             duration_ms: started.elapsed().as_millis() as u64,
             verified: plan.verify,
-            log: Vec::new(),
+            log,
         })
     }
 
@@ -146,42 +161,12 @@ impl FlashBackend for MockBackend {
     }
 }
 
-/// A realistic plan per family, used by the demo screen until real packages exist (plan 4).
-pub fn demo_plan(family: Family) -> FlashPlan {
-    const KIB: usize = 1024;
-    match family {
-        Family::Esp32 => {
-            let mut plan = FlashPlan::new(
-                family,
-                vec![
-                    Region::new(0x0, "bootloader.bin", vec![0xFF; 21 * KIB]),
-                    Region::new(0x8000, "partition-table.bin", vec![0xFF; 3 * KIB]),
-                    Region::new(0xD000, "ota_data_initial.bin", vec![0xFF; 8 * KIB]),
-                    Region::new(0x1_0000, "thermostat.bin", vec![0xFF; 1100 * KIB]),
-                ],
-            );
-            plan.chip = Some("esp32s3".into());
-            plan
-        }
-        Family::Stm32 => FlashPlan::new(
-            family,
-            vec![Region::new(
-                0x0800_0000,
-                "passerelle.bin",
-                vec![0xFF; 450 * KIB],
-            )],
-        ),
-        Family::Nrf => FlashPlan::new(
-            family,
-            vec![Region::new(0x0, "capteur-porte.hex", vec![0xFF; 300 * KIB])],
-        ),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ErrorCode, RecordingSink, UserFacingError};
+    use crate::{
+        ErrorCode, RecordingSink, Region, SimulatedWorld, UserFacingError, load_scenario, plan_for,
+    };
 
     fn small_plan() -> FlashPlan {
         FlashPlan::new(
@@ -241,6 +226,28 @@ mod tests {
     }
 
     #[test]
+    fn flash_logs_one_line_per_phase() {
+        let report = MockBackend::default()
+            .flash(
+                &MockBackend::target(Family::Esp32),
+                &small_plan(),
+                &RecordingSink::default(),
+                &CancelToken::new(),
+            )
+            .unwrap();
+        assert_eq!(
+            report.log,
+            [
+                "connect ESP32-S3",
+                "write 0x0 bootloader 12288 B",
+                "write 0x10000 app 20480 B",
+                "verify ok",
+                "reset",
+            ]
+        );
+    }
+
+    #[test]
     fn written_bytes_never_go_backwards() {
         let sink = RecordingSink::default();
         MockBackend::default()
@@ -271,6 +278,10 @@ mod tests {
             .unwrap();
         assert_eq!(kinds(&sink.events()).last(), Some(&"writing"));
         assert!(!report.verified);
+        assert_eq!(
+            report.log.last().map(String::as_str),
+            Some("write 0x10000 app 20480 B")
+        );
     }
 
     /// Cancels the job as soon as the first chunk is written.
@@ -332,6 +343,27 @@ mod tests {
     }
 
     #[test]
+    fn failure_names_the_block_and_address() {
+        let backend = MockBackend {
+            fail_at_percent: Some(50),
+            ..MockBackend::default()
+        };
+        let err = backend
+            .flash(
+                &MockBackend::target(Family::Esp32),
+                &small_plan(),
+                &RecordingSink::default(),
+                &CancelToken::new(),
+            )
+            .unwrap_err();
+        // 4 of the 8 blocks reach 50 %: the first of the 5 blocks of `app`.
+        assert_eq!(
+            UserFacingError::from(&err).technical,
+            "device error: write block 1/5 @ 0x00010000\nerror: simulated disconnect"
+        );
+    }
+
+    #[test]
     fn invalid_plan_emits_no_progress() {
         let sink = RecordingSink::default();
         let plan = FlashPlan::new(Family::Esp32, vec![]);
@@ -369,13 +401,20 @@ mod tests {
     }
 
     #[test]
-    fn demo_plans_are_valid_for_every_family() {
-        for family in Family::ALL {
-            let plan = demo_plan(family);
-            assert_eq!(plan.family, family);
-            assert_eq!(plan.validate(), Ok(()), "{family:?}");
-        }
-        assert_eq!(demo_plan(Family::Esp32).regions.len(), 4);
-        assert_eq!(demo_plan(Family::Esp32).chip.as_deref(), Some("esp32s3"));
+    fn flashes_a_scenario_firmware_end_to_end() {
+        let world = SimulatedWorld::new(load_scenario("single").unwrap());
+        let firmware = world.firmware("thermostat-1.4.2-prod").unwrap();
+        let target = world.target("mock:esp32s3:COM4").unwrap();
+        let report = MockBackend::default()
+            .flash(
+                target,
+                &plan_for(firmware, Family::Esp32),
+                &RecordingSink::default(),
+                &CancelToken::new(),
+            )
+            .unwrap();
+        assert_eq!(report.bytes_written, firmware.size_bytes);
+        assert_eq!(report.log[0], "connect ESP32-S3");
+        assert_eq!(report.log[4], "write 0x10000 thermostat.bin 1153434 B");
     }
 }

@@ -68,17 +68,28 @@ pub fn run_flash_job(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flashr_core::{Family, MockBackend, Phase, ProgressEvent, RecordingSink, demo_plan};
+    use flashr_core::{
+        Family, MockBackend, Phase, ProgressEvent, RecordingSink, SimulatedWorld, load_scenario,
+        plan_for,
+    };
 
     fn esp() -> Target {
         MockBackend::target(Family::Esp32)
+    }
+
+    fn thermostat_plan() -> FlashPlan {
+        let world = SimulatedWorld::new(load_scenario("single").unwrap());
+        plan_for(
+            world.firmware("thermostat-1.4.2-prod").unwrap(),
+            Family::Esp32,
+        )
     }
 
     #[test]
     fn successful_job_returns_the_report() {
         let slot = Arc::new(JobSlot::default());
         let job = slot.start().unwrap();
-        let plan = demo_plan(Family::Esp32);
+        let plan = thermostat_plan();
         let report = run_flash_job(
             &MockBackend::default(),
             &esp(),
@@ -110,7 +121,7 @@ mod tests {
             let err = run_flash_job(
                 &failing,
                 &esp(),
-                &demo_plan(Family::Esp32),
+                &thermostat_plan(),
                 &RecordingSink::default(),
                 &job.token,
             )
@@ -148,7 +159,7 @@ mod tests {
         let err = run_flash_job(
             &MockBackend::default(),
             &esp(),
-            &demo_plan(Family::Esp32),
+            &thermostat_plan(),
             &sink,
             &job.token,
         )

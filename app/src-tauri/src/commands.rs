@@ -1,5 +1,6 @@
 use flashr_core::{
-    ErrorCode, FlashReport, ProgressEvent, ProgressSink, Target, UserFacingError, demo_plan,
+    DEFAULT_SCENARIO, ErrorCode, FamilyGuess, FlashReport, ProgressEvent, ProgressSink, Target,
+    UserFacingError, load_scenario, plan_for,
 };
 use tauri::State;
 use tauri::ipc::Channel;
@@ -34,8 +35,17 @@ pub async fn flash_demo(
             format!("unknown target `{target_id}`"),
         )
     })?;
+    // Stopgap until Task 4: the default scenario's first firmware of the board's family.
+    let firmware = load_scenario(DEFAULT_SCENARIO)
+        .and_then(|s| s.stages.into_iter().next())
+        .and_then(|stage| {
+            stage.snapshot.firmwares.into_iter().find(
+                |f| matches!(f.family, FamilyGuess::Certain { family } if family == target.family),
+            )
+        })
+        .ok_or_else(|| UserFacingError::new(ErrorCode::InvalidPlan, "no demo firmware"))?;
     let job = state.jobs.start()?;
-    let plan = demo_plan(target.family);
+    let plan = plan_for(&firmware, target.family);
     let sink = ChannelSink(on_progress);
 
     tauri::async_runtime::spawn_blocking(move || {
