@@ -1,9 +1,27 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import DemoFlow from './lib/demo/DemoFlow.svelte';
+  import { buildReport } from './lib/app/report';
+  import {
+    currentFirmware,
+    currentIssue,
+    currentTarget,
+    familyOf,
+    INITIAL_CHOICES,
+    screenOf,
+    type Choices,
+    type ProvisionalId,
+    type ScreenId,
+  } from './lib/app/screen';
   import { flashReducer, toUserFacingError, type FlashAction, type FlashState } from './lib/flashState';
-  import { setLocale, t } from './lib/i18n/index.svelte';
+  import { locale, setLocale, t } from './lib/i18n/index.svelte';
   import type { Backend } from './lib/ipc';
+  import ChooseChipScreen from './lib/screens/ChooseChipScreen.svelte';
+  import FailureScreen from './lib/screens/FailureScreen.svelte';
+  import FirmwareListScreen from './lib/screens/FirmwareListScreen.svelte';
+  import HomeScreen from './lib/screens/HomeScreen.svelte';
+  import ProgrammingScreen from './lib/screens/ProgrammingScreen.svelte';
+  import ProvisionalScreen from './lib/screens/ProvisionalScreen.svelte';
+  import SuccessScreen from './lib/screens/SuccessScreen.svelte';
   import { browserStore, loadSettings, saveSettings, type Settings } from './lib/settings';
   import ExpertPlaceholder from './lib/shell/ExpertPlaceholder.svelte';
   import InstructionsPanel from './lib/shell/InstructionsPanel.svelte';
@@ -11,11 +29,25 @@
   import SettingsView from './lib/shell/SettingsView.svelte';
   import StatusBar from './lib/shell/StatusBar.svelte';
   import TopBar from './lib/shell/TopBar.svelte';
-  import { boardName } from './lib/targets';
+  import { pillText } from './lib/targets';
   import { applyTheme, DARK_QUERY, resolveTheme } from './lib/theme';
-  import type { AppInfo, Family, FirmwareSummary, FlashRequest, Snapshot, UserFacingError } from './lib/types';
+  import type { AppInfo, Family, FirmwareSummary, FlashRequest, ImageEntry, Snapshot, Target } from './lib/types';
 
   let { backend }: { backend: Backend } = $props();
+
+  const PROVISIONAL: readonly ProvisionalId[] = [
+    'waiting-board',
+    'missing-driver',
+    'external-tool',
+    'no-firmware',
+    'incomplete',
+  ];
+  /** Screens where the instructions panel is hidden, not folded (spec "Screens"). */
+  const NO_INSTRUCTIONS: readonly ScreenId[] = ['firmware-list', 'no-firmware'];
+
+  function isProvisional(id: ScreenId): id is ProvisionalId {
+    return PROVISIONAL.some((candidate) => candidate === id);
+  }
 
   const store = browserStore();
   const media = typeof window.matchMedia === 'function' ? window.matchMedia(DARK_QUERY) : null;
@@ -28,18 +60,35 @@
   let mode = $state<Mode>('simple');
   let view = $state<'main' | 'settings'>('main');
   let instructionsOpen = $state(true);
-  let info = $state<AppInfo | null>(null);
-  let snapshot = $state<Snapshot | null>(null);
-  const targets = $derived(snapshot?.targets ?? []);
-  let selectedId = $state<string | null>(null);
-  let startupError = $state<UserFacingError | null>(null);
-  let flash = $state<FlashState>({ status: 'idle' });
+  let info = $state.raw<AppInfo | null>(null);
+  let snapshot = $state.raw<Snapshot | null>(null);
+  let choices = $state.raw<Choices>({ ...INITIAL_CHOICES, families: {} });
+  let job = $state.raw<FlashState>({ status: 'idle' });
+  // What the job was started with: 05–07 keep showing it whatever the snapshot says afterwards.
+  let jobFirmware = $state.raw<FirmwareSummary | null>(null);
+  let jobTarget = $state.raw<Target | null>(null);
 
-  const selected = $derived(targets.find((target) => target.id === selectedId) ?? null);
-  const board = $derived(selected ? boardName(selected, t()) : null);
-  const tone = $derived(
-    flash.status === 'failure' && flash.error.code !== 'cancelled' ? 'err' : selected ? 'ok' : 'idle',
-  );
+  const firmware = $derived(snapshot ? currentFirmware(snapshot, choices) : null);
+  const family = $derived(firmware ? familyOf(firmware, choices) : null);
+  const target = $derived(snapshot ? currentTarget(snapshot, family) : null);
+  const issue = $derived(snapshot ? currentIssue(snapshot, family) : null);
+  const screenId = $derived(screenOf(snapshot, choices, job));
+
+  const pillTarget = $derived(job.status !== 'idle' ? jobTarget : (target ?? snapshot?.targets[0] ?? null));
+  const pill = $derived(pillText(screenId, pillTarget, issue, t()));
+  const shownFirmware = $derived(job.status !== 'idle' ? jobFirmware : firmware);
+  const showInstructions = $derived(view !== 'settings' && !(mode === 'simple' && NO_INSTRUCTIONS.includes(screenId)));
+
+  const note = $derived.by(() => {
+    const m = t();
+    const folders = snapshot?.folders ?? [];
+    if (folders.length > 0) {
+      const paths = folders.map((folder) => (folder.kind === 'app' ? `${folder.path} (${m.status.appFolder})` : folder.path));
+      return m.status.watching(paths.join(' · '));
+    }
+    return info?.scenario ? m.status.simulated(info.scenario) : '';
+  });
+  const warning = $derived(info?.scenarioWarning ? t().status.unknownScenario(info.scenarioWarning) : null);
 
   $effect(() => {
     setLocale(settings.locale);
@@ -55,64 +104,107 @@
       systemDark = event.matches;
     };
     media?.addEventListener('change', follow);
-    const stopSnapshots = backend.onSnapshot((next) => {
+
+    // Subscribe before asking, so no change is lost between the two.
+    let pushed = false;
+    const unsubscribe = backend.onSnapshot((next) => {
+      pushed = true;
       snapshot = next;
     });
-    void load();
+    void (async () => {
+      const [nextInfo, first] = await Promise.all([backend.appInfo(), backend.snapshot()]);
+      info = nextInfo;
+      // A pushed snapshot is newer than the one this request returned.
+      if (!pushed) snapshot = first;
+    })();
+
     return () => {
+      unsubscribe();
       media?.removeEventListener('change', follow);
-      stopSnapshots();
     };
   });
 
-  async function load() {
-    try {
-      info = await backend.appInfo();
-      const first = await backend.snapshot();
-      snapshot = first;
-      selectedId = first.targets[0]?.id ?? null;
-    } catch (error) {
-      startupError = toUserFacingError(error);
-    }
-  }
-
   function dispatch(action: FlashAction) {
-    flash = flashReducer(flash, action);
+    job = flashReducer(job, action);
   }
 
-  /** The demo screen has no firmware picker: it programs the first firmware of the board's family. */
-  function firmwareFor(family: Family): FirmwareSummary | null {
-    return (
-      snapshot?.firmwares.find(
-        (firmware) => firmware.family.kind !== 'unknown' && firmware.family.family === family,
-      ) ?? null
-    );
+  function program() {
+    if (!firmware || !target || !family) return;
+    // The family travels only when the user confirmed it; a certain guess is the backend's own.
+    const request: FlashRequest = {
+      firmwareId: firmware.id,
+      targetId: target.id,
+      family: firmware.family.kind === 'certain' ? null : family,
+    };
+    void run(request, firmware.images, firmware, target);
   }
 
-  async function program() {
+  function retry() {
+    if (job.status !== 'failure' || !jobFirmware) return;
+    void run(job.request, job.images, jobFirmware, jobTarget);
+  }
+
+  async function run(request: FlashRequest, images: ImageEntry[], what: FirmwareSummary, where: Target | null) {
     // The state changes synchronously on start, so a second press in the same instant stops here.
-    if (!selected || flash.status === 'flashing') return;
-    const target = selected;
-    const firmware = firmwareFor(target.family);
-    if (!firmware) return;
-    const request: FlashRequest = { firmwareId: firmware.id, targetId: target.id, family: target.family };
-    dispatch({ type: 'start', request, images: firmware.images, at: Date.now() });
+    if (job.status === 'flashing') return;
+    jobFirmware = what;
+    jobTarget = where;
+    dispatch({ type: 'start', request, images, at: Date.now() });
     try {
       const report = await backend.flash(request, (event) => dispatch({ type: 'progress', event, at: Date.now() }));
       dispatch({ type: 'success', report, at: Date.now() });
+      // Counted once, and only if this result was not ignored as late.
+      if (job.status === 'success') choices = { ...choices, boardsThisSession: choices.boardsThisSession + 1 };
     } catch (error) {
       dispatch({ type: 'failure', error: toUserFacingError(error), at: Date.now() });
     }
   }
 
   function cancel() {
-    // A refused cancel only means the job has already ended; its result arrives through program().
+    // A refused cancel only means the job has already ended; its result arrives through run().
     backend.cancelFlash().catch(() => undefined);
   }
 
-  function selectFamily(family: Family) {
-    const target = targets.find((candidate) => candidate.family === family);
-    if (target) selectedId = target.id;
+  function clearJob() {
+    dispatch({ type: 'reset' });
+    jobFirmware = null;
+    jobTarget = null;
+  }
+
+  /** "Programmer une autre carte": the screen is derived again, so a board that isn't there shows 04. */
+  function another() {
+    clearJob();
+  }
+
+  function home() {
+    clearJob();
+    choices = { ...choices, browsing: false };
+  }
+
+  function browse() {
+    choices = { ...choices, browsing: true };
+  }
+
+  function selectFirmware(id: string) {
+    choices = { ...choices, firmwareId: id, browsing: false };
+  }
+
+  function chooseFamily(next: Family) {
+    if (!firmware) return;
+    choices = { ...choices, families: { ...choices.families, [firmware.id]: next } };
+  }
+
+  async function copyReport() {
+    if ((job.status !== 'success' && job.status !== 'failure') || !jobFirmware || !info) {
+      throw new Error('no finished job to report');
+    }
+    const folder = snapshot?.folders[jobFirmware.folder] ?? null;
+    const report = buildReport(
+      { info, firmware: jobFirmware, folder, target: jobTarget, job, now: new Date() },
+      t(),
+      locale(),
+    );
+    await navigator.clipboard.writeText(report);
   }
 
   function setMode(next: Mode) {
@@ -128,9 +220,14 @@
 </script>
 
 <div class="window">
-  <TopBar {board} {tone} {mode} onmode={setMode} onsettings={() => (view = 'settings')} />
+  <TopBar board={pill.text} tone={pill.tone} breathe={pill.breathe} {mode} onmode={setMode} onsettings={() => (view = 'settings')} />
   <div class="middle">
     <main class="content">
+      <!-- Persistent, so its text change is announced. The result hero takes the focus instead. -->
+      <div class="visually-hidden" role="status" aria-live="polite">
+        {#if job.status === 'flashing'}{t().progress.title}. {t().progress.keepPlugged}{/if}
+      </div>
+
       {#if view === 'settings'}
         <SettingsView
           {settings}
@@ -140,27 +237,61 @@
         />
       {:else if mode === 'expert'}
         <ExpertPlaceholder onsimple={() => setMode('simple')} />
-      {:else}
-        <DemoFlow
-          {selected}
-          {flash}
-          {startupError}
-          onfamily={selectFamily}
+      {:else if screenId === 'programming' && job.status === 'flashing' && jobFirmware}
+        <ProgrammingScreen firmware={jobFirmware} target={jobTarget} {job} oncancel={cancel} />
+      {:else if screenId === 'success' && job.status === 'success' && jobFirmware}
+        <SuccessScreen
+          firmware={jobFirmware}
+          target={jobTarget}
+          {job}
+          boardsThisSession={choices.boardsThisSession}
+          onagain={another}
+          onreport={copyReport}
+          onhome={home}
+        />
+      {:else if screenId === 'failure' && job.status === 'failure' && jobFirmware}
+        <FailureScreen firmware={jobFirmware} {job} onretry={retry} onexport={copyReport} onhome={home} />
+      {:else if screenId === 'firmware-list' && snapshot}
+        <FirmwareListScreen
+          {snapshot}
+          selectedId={firmware?.id ?? null}
+          onselect={selectFirmware}
+          onaddfolder={() => void backend.addFolder()}
+          onopenfile={() => void backend.openFile()}
+        />
+      {:else if screenId === 'choose-chip' && snapshot && firmware}
+        <ChooseChipScreen {snapshot} {firmware} onfamily={chooseFamily} onchange={browse} />
+      {:else if screenId === 'home' && snapshot && firmware && family && target}
+        <HomeScreen
+          {snapshot}
+          {firmware}
+          {family}
+          {target}
           onprogram={program}
-          oncancel={cancel}
-          onreset={() => dispatch({ type: 'reset' })}
+          onchange={browse}
+          ondetails={() => setMode('expert')}
+          onrefresh={() => void backend.recheck()}
+          onfamily={chooseFamily}
+        />
+      {:else if isProvisional(screenId)}
+        <ProvisionalScreen
+          screen={screenId}
+          onchange={browse}
+          onrecheck={() => void backend.recheck()}
+          onaddfolder={() => void backend.addFolder()}
+          onopenfile={() => void backend.openFile()}
         />
       {/if}
     </main>
-    {#if view !== 'settings'}
+    {#if showInstructions}
       <InstructionsPanel
         open={instructionsOpen}
-        empty={false}
+        empty={!shownFirmware?.readme}
         ontoggle={() => (instructionsOpen = !instructionsOpen)}
       />
     {/if}
   </div>
-  <StatusBar note={t().status.demo} version={info?.version ?? null} />
+  <StatusBar {note} {warning} version={info?.version ?? null} />
 </div>
 
 <style>
@@ -182,5 +313,17 @@
     flex-direction: column;
     gap: 18px;
     overflow-y: auto;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 </style>

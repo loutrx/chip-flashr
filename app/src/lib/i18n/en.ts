@@ -43,7 +43,6 @@ export const en: Messages = {
     waitingFamily: 'Waiting for the chip type',
     waitingFamilyNote: 'The probe search starts as soon as you choose.',
     refresh: 'Search for boards again',
-    demoNote: 'Demo: no real board is programmed.',
   },
   firmware: {
     label: 'Firmware to program',
@@ -86,11 +85,6 @@ export const en: Messages = {
     empty: 'No firmware matches the search.',
     filtersLabel: 'Filter by chip type',
   },
-  demo: {
-    program: 'Program',
-    hint: 'A few seconds on the simulated board.',
-    listError: 'Could not list the boards.',
-  },
   progress: {
     title: 'Programming',
     barLabel: 'Programming progress',
@@ -99,14 +93,6 @@ export const en: Messages = {
     remaining: (duration) => `about ${duration} left`,
     stepsLabel: 'Programming steps',
     fileBarLabel: (name) => `Progress of ${name}`,
-  },
-  phase: {
-    preparing: 'Preparing…',
-    connecting: 'Connecting to the board',
-    erasing: 'Erasing',
-    writing: (index, count, label) => `Writing ${index}/${count} · ${label}`,
-    verifying: 'Verifying',
-    resetting: 'Restarting the board',
   },
   steps: {
     connecting: 'Connecting to the board',
@@ -126,7 +112,6 @@ export const en: Messages = {
     notVerified: 'Not verified',
     duration: 'Duration',
     sessionBoards: 'Boards this session',
-    size: 'Written',
     again: 'Program another board',
     report: 'View the report',
     home: 'Back to home',
@@ -259,7 +244,6 @@ export const en: Messages = {
     appFolder: 'app folder',
     simulated: (scenario) => `Simulated · scenario ${scenario}`,
     unknownScenario: (name) => `Unknown scenario “${name}”: using default`,
-    demo: 'Demo · simulated board',
   },
   settings: {
     title: 'Settings',

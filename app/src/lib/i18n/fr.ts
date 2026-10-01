@@ -114,8 +114,6 @@ export const fr = {
     waitingFamily: 'En attente du type de puce',
     waitingFamilyNote: 'La recherche de sonde démarre dès que vous avez choisi.',
     refresh: 'Rechercher à nouveau les cartes',
-    // DemoFlow only; removed with it.
-    demoNote: 'Démo : aucune vraie carte n’est programmée.',
   },
   firmware: {
     label: 'Firmware à programmer',
@@ -159,12 +157,6 @@ export const fr = {
     empty: 'Aucun firmware ne correspond à la recherche.',
     filtersLabel: 'Filtrer par type de puce',
   },
-  // DemoFlow only; removed with it.
-  demo: {
-    program: 'Programmer',
-    hint: 'Quelques secondes sur la carte simulée.',
-    listError: 'Impossible de lister les cartes.',
-  },
   progress: {
     title: 'Programmation en cours',
     barLabel: 'Progression de la programmation',
@@ -173,15 +165,6 @@ export const fr = {
     remaining: (duration: string) => `environ ${duration} restantes`,
     stepsLabel: 'Étapes de la programmation',
     fileBarLabel: (name: string) => `Progression de ${name}`,
-  },
-  // phaseLabel (DemoFlow) only; removed with it in Task 15.
-  phase: {
-    preparing: 'Préparation…',
-    connecting: 'Connexion à la carte',
-    erasing: 'Effacement des zones',
-    writing: (index: number, count: number, label: string) => `Écriture ${index}/${count} · ${label}`,
-    verifying: 'Vérification',
-    resetting: 'Redémarrage de la carte',
   },
   steps: {
     connecting: 'Connexion à la carte',
@@ -202,8 +185,6 @@ export const fr = {
     notVerified: 'Non vérifiée',
     duration: 'Durée',
     sessionBoards: 'Cartes cette session',
-    // DemoFlow only; removed with it.
-    size: 'Écrit',
     again: 'Programmer une autre carte',
     report: 'Voir le rapport',
     home: 'Retour à l’accueil',
@@ -297,8 +278,6 @@ export const fr = {
     appFolder: 'dossier de l’application',
     simulated: (scenario: string) => `Simulation · scénario ${scenario}`,
     unknownScenario: (name: string) => `Scénario inconnu «\u00a0${name}\u00a0» : scénario default utilisé`,
-    // DemoFlow only; removed with it.
-    demo: 'Démo · carte simulée',
   },
   settings: {
     title: 'Réglages',

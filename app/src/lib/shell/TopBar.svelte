@@ -10,12 +10,15 @@
   let {
     board,
     tone,
+    breathe,
     mode,
     onmode,
     onsettings,
   }: {
     board: string | null;
     tone: Tone;
+    /** From `pillText`; without it the dot breathes on `ok`, as in plan 2. */
+    breathe?: boolean;
     mode: Mode;
     onmode: (mode: Mode) => void;
     onsettings: () => void;
@@ -33,7 +36,7 @@
     <span class="name">Chip Flashr</span>
   </div>
   <span class="spacer"></span>
-  <Pill {tone} breathe={tone === 'ok'}>{board ?? t().topbar.noBoard}</Pill>
+  <Pill {tone} breathe={breathe ?? tone === 'ok'}>{board ?? t().topbar.noBoard}</Pill>
   <SegmentedControl label={t().topbar.modeGroup} options={modes} value={mode} onchange={onmode} />
   <IconButton icon="sliders" label={t().topbar.settings} onclick={onsettings} />
 </header>
