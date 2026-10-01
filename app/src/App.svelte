@@ -96,12 +96,12 @@
     const firmware = firmwareFor(target.family);
     if (!firmware) return;
     const request: FlashRequest = { firmwareId: firmware.id, targetId: target.id, family: target.family };
-    dispatch({ type: 'start' });
+    dispatch({ type: 'start', request, images: firmware.images, at: Date.now() });
     try {
-      const report = await backend.flash(request, (event) => dispatch({ type: 'progress', event }));
-      dispatch({ type: 'success', report });
+      const report = await backend.flash(request, (event) => dispatch({ type: 'progress', event, at: Date.now() }));
+      dispatch({ type: 'success', report, at: Date.now() });
     } catch (error) {
-      dispatch({ type: 'failure', error: toUserFacingError(error) });
+      dispatch({ type: 'failure', error: toUserFacingError(error), at: Date.now() });
     }
   }
 
