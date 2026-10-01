@@ -117,6 +117,10 @@ export const en: Messages = {
     home: 'Back to home',
     copied: 'Copied',
   },
+  startup: {
+    title: 'Unable to start',
+    body: 'Chip Flashr could not read the state of the boards and firmwares. Restart the application; if the problem persists, send the technical details to your supplier.',
+  },
   failure: {
     details: 'Technical details',
     retry: 'Try again',

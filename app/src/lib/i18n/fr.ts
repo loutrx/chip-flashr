@@ -190,6 +190,10 @@ export const fr = {
     home: 'Retour à l’accueil',
     copied: 'Copié',
   },
+  startup: {
+    title: 'Impossible de démarrer',
+    body: 'Chip Flashr n’a pas pu lire l’état des cartes et des firmwares. Redémarrez l’application ; si le problème persiste, transmettez les détails techniques à votre fournisseur.',
+  },
   failure: {
     details: 'Détails techniques',
     retry: 'Réessayer',

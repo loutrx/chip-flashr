@@ -375,3 +375,26 @@ describe('App: shell', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
   });
 });
+
+describe('App: startup failure', () => {
+  it('shows the failure and its technical line when the snapshot cannot be read', async () => {
+    const backend: Backend = {
+      ...preview({ scenario: 'single' }),
+      snapshot: () => Promise.reject({ code: 'device-error', technical: 'ipc: snapshot unavailable' }),
+    };
+    await renderApp(backend);
+    expect(screen.getByRole('heading', { name: fr.startup.title })).toBeInTheDocument();
+    expect(screen.getByText('ipc: snapshot unavailable')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Programmer' })).toBeNull();
+  });
+
+  it('keeps the normal screen when only the app info cannot be read', async () => {
+    const backend: Backend = {
+      ...preview({ scenario: 'single' }),
+      appInfo: () => Promise.reject(new Error('no info')),
+    };
+    await renderApp(backend);
+    expect(programButton()).toBeEnabled();
+    expect(screen.queryByRole('heading', { name: fr.startup.title })).toBeNull();
+  });
+});

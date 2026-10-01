@@ -15,6 +15,8 @@
   import { flashReducer, toUserFacingError, type FlashAction, type FlashState } from './lib/flashState';
   import { locale, setLocale, t } from './lib/i18n/index.svelte';
   import type { Backend } from './lib/ipc';
+  import Console from './lib/components/Console.svelte';
+  import ResultHero from './lib/components/ResultHero.svelte';
   import ChooseChipScreen from './lib/screens/ChooseChipScreen.svelte';
   import FailureScreen from './lib/screens/FailureScreen.svelte';
   import FirmwareListScreen from './lib/screens/FirmwareListScreen.svelte';
@@ -31,7 +33,7 @@
   import TopBar from './lib/shell/TopBar.svelte';
   import { pillText } from './lib/targets';
   import { applyTheme, DARK_QUERY, resolveTheme } from './lib/theme';
-  import type { AppInfo, Family, FirmwareSummary, FlashRequest, ImageEntry, Snapshot, Target } from './lib/types';
+  import type { AppInfo, UserFacingError, Family, FirmwareSummary, FlashRequest, ImageEntry, Snapshot, Target } from './lib/types';
 
   let { backend }: { backend: Backend } = $props();
 
@@ -62,6 +64,7 @@
   let instructionsOpen = $state(true);
   let info = $state.raw<AppInfo | null>(null);
   let snapshot = $state.raw<Snapshot | null>(null);
+  let startupError = $state.raw<UserFacingError | null>(null);
   let choices = $state.raw<Choices>({ ...INITIAL_CHOICES, families: {} });
   let job = $state.raw<FlashState>({ status: 'idle' });
   // What the job was started with: 05–07 keep showing it whatever the snapshot says afterwards.
@@ -112,10 +115,14 @@
       snapshot = next;
     });
     void (async () => {
-      const [nextInfo, first] = await Promise.all([backend.appInfo(), backend.snapshot()]);
-      info = nextInfo;
+      const [nextInfo, first] = await Promise.allSettled([backend.appInfo(), backend.snapshot()]);
+      if (nextInfo.status === 'fulfilled') info = nextInfo.value;
       // A pushed snapshot is newer than the one this request returned.
-      if (!pushed) snapshot = first;
+      if (first.status === 'fulfilled') {
+        if (!pushed) snapshot = first.value;
+      } else if (!pushed) {
+        startupError = toUserFacingError(first.reason);
+      }
     })();
 
     return () => {
@@ -237,6 +244,9 @@
         />
       {:else if mode === 'expert'}
         <ExpertPlaceholder onsimple={() => setMode('simple')} />
+      {:else if snapshot === null && startupError}
+        <ResultHero tone="failure" title={t().startup.title}>{t().startup.body}</ResultHero>
+        <Console lines={startupError.technical.split('\n')} />
       {:else if screenId === 'programming' && job.status === 'flashing' && jobFirmware}
         <ProgrammingScreen firmware={jobFirmware} target={jobTarget} {job} oncancel={cancel} />
       {:else if screenId === 'success' && job.status === 'success' && jobFirmware}
