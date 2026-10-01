@@ -31,7 +31,6 @@ export const en: Messages = {
     },
   },
   board: {
-    simulated: (chip) => `Simulated board · ${chip}`,
     connected: (name) => `${name} connected`,
     connection: (port, link, flash) => [`Port ${port}`, link, flash].filter((part) => part !== null).join(' · '),
     link: {

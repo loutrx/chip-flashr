@@ -101,7 +101,6 @@ export const fr = {
     },
   },
   board: {
-    simulated: (chip: string) => `Carte simulée · ${chip}`,
     connected: (name: string) => `${name} connectée`,
     connection: (port: string, link: string, flash: string | null) =>
       [`Port ${port}`, link, flash].filter((part) => part !== null).join(' · '),
