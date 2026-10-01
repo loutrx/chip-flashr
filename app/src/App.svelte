@@ -13,7 +13,7 @@
   import TopBar from './lib/shell/TopBar.svelte';
   import { boardName } from './lib/targets';
   import { applyTheme, DARK_QUERY, resolveTheme } from './lib/theme';
-  import type { AppInfo, Family, Target, UserFacingError } from './lib/types';
+  import type { AppInfo, Family, FirmwareSummary, FlashRequest, Snapshot, UserFacingError } from './lib/types';
 
   let { backend }: { backend: Backend } = $props();
 
@@ -29,7 +29,8 @@
   let view = $state<'main' | 'settings'>('main');
   let instructionsOpen = $state(true);
   let info = $state<AppInfo | null>(null);
-  let targets = $state<Target[]>([]);
+  let snapshot = $state<Snapshot | null>(null);
+  const targets = $derived(snapshot?.targets ?? []);
   let selectedId = $state<string | null>(null);
   let startupError = $state<UserFacingError | null>(null);
   let flash = $state<FlashState>({ status: 'idle' });
@@ -54,15 +55,22 @@
       systemDark = event.matches;
     };
     media?.addEventListener('change', follow);
+    const stopSnapshots = backend.onSnapshot((next) => {
+      snapshot = next;
+    });
     void load();
-    return () => media?.removeEventListener('change', follow);
+    return () => {
+      media?.removeEventListener('change', follow);
+      stopSnapshots();
+    };
   });
 
   async function load() {
     try {
       info = await backend.appInfo();
-      targets = await backend.listTargets();
-      selectedId = targets[0]?.id ?? null;
+      const first = await backend.snapshot();
+      snapshot = first;
+      selectedId = first.targets[0]?.id ?? null;
     } catch (error) {
       startupError = toUserFacingError(error);
     }
@@ -72,13 +80,25 @@
     flash = flashReducer(flash, action);
   }
 
+  /** The demo screen has no firmware picker: it programs the first firmware of the board's family. */
+  function firmwareFor(family: Family): FirmwareSummary | null {
+    return (
+      snapshot?.firmwares.find(
+        (firmware) => firmware.family.kind !== 'unknown' && firmware.family.family === family,
+      ) ?? null
+    );
+  }
+
   async function program() {
     // The state changes synchronously on start, so a second press in the same instant stops here.
     if (!selected || flash.status === 'flashing') return;
     const target = selected;
+    const firmware = firmwareFor(target.family);
+    if (!firmware) return;
+    const request: FlashRequest = { firmwareId: firmware.id, targetId: target.id, family: target.family };
     dispatch({ type: 'start' });
     try {
-      const report = await backend.flashDemo(target.id, (event) => dispatch({ type: 'progress', event }));
+      const report = await backend.flash(request, (event) => dispatch({ type: 'progress', event }));
       dispatch({ type: 'success', report });
     } catch (error) {
       dispatch({ type: 'failure', error: toUserFacingError(error) });

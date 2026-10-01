@@ -2,14 +2,21 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App.svelte';
+import { en } from './lib/i18n/en';
+import { fr } from './lib/i18n/fr';
 import { setLocale } from './lib/i18n/index.svelte';
 import type { Backend } from './lib/ipc';
 import { createPreviewBackend, type PreviewOptions } from './lib/preview/previewBackend';
+import { SCENARIOS } from './lib/preview/scenarios';
 import { SETTINGS_KEY } from './lib/settings';
+import { boardName } from './lib/targets';
 
 function preview(options: Partial<PreviewOptions> = {}): Backend {
-  return createPreviewBackend({ chunkDelayMs: 15, failAtPercent: null, ...options });
+  return createPreviewBackend({ chunkDelayMs: 15, failAtPercent: null, scenario: null, ...options });
 }
+
+/** The ESP32-S3 on COM4 of the default scenario. */
+const board = SCENARIOS.default.stages[0].snapshot.targets[0];
 
 /** Run fake timers for `ms`, then let Svelte update the DOM. */
 async function settle(ms = 0): Promise<void> {
@@ -58,13 +65,11 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('lists the three families and names the selected board', async () => {
+  it('selects the family of the connected board and names it', async () => {
     await renderApp();
     expect(screen.getByRole('button', { name: /Espressif/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('Carte simulée · ESP32-S3')).toBeInTheDocument();
+    expect(screen.getByText(boardName(board, fr))).toBeInTheDocument();
     expect(screen.getByText('v0.1.0')).toBeInTheDocument();
-    await fireEvent.click(screen.getByRole('button', { name: /STMicroelectronics/ }));
-    expect(screen.getByText('Carte simulée · STM32F411')).toBeInTheDocument();
   });
 
   it('programs the board and shows the success hero', async () => {
@@ -106,18 +111,18 @@ describe('App', () => {
     await fireEvent.click(programButton());
     await settle(10_000);
     expect(screen.getByRole('heading', { name: 'La programmation a échoué' })).toBeInTheDocument();
-    expect(screen.getByText('device error: simulated disconnect')).toBeInTheDocument();
+    expect(screen.getByText(/simulated disconnect/)).toBeInTheDocument();
   });
 
   it('starts a single job when Programmer is pressed twice', async () => {
     const backend = preview();
-    const flashDemo = vi.spyOn(backend, 'flashDemo');
+    const flash = vi.spyOn(backend, 'flash');
     await renderApp(backend);
     const button = programButton();
     button.click();
     button.click();
     await settle(10_000);
-    expect(flashDemo).toHaveBeenCalledTimes(1);
+    expect(flash).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', { name: 'Programmation réussie' })).toBeInTheDocument();
   });
 
@@ -167,7 +172,7 @@ describe('App', () => {
     await fireEvent.change(screen.getByRole('combobox', { name: 'Langue' }), { target: { value: 'en' } });
     await settle();
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
-    expect(screen.getByText('Simulated board · ESP32-S3')).toBeInTheDocument();
+    expect(screen.getByText(boardName(board, en))).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('en');
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')).toEqual({ locale: 'en', theme: 'light' });
     await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
@@ -201,14 +206,14 @@ describe('App', () => {
     // jsdom reports navigator.languages = ['en-US'], so the defaults are English and "system".
     storeSettings('{not json');
     await renderApp();
-    expect(screen.getByText('Simulated board · ESP32-S3')).toBeInTheDocument();
+    expect(screen.getByText(boardName(board, en))).toBeInTheDocument();
     expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   it('explains when the boards cannot be listed', async () => {
     const backend: Backend = {
       ...preview(),
-      listTargets: () => Promise.reject({ code: 'device-error', technical: 'USB enumeration failed' }),
+      snapshot: () => Promise.reject({ code: 'device-error', technical: 'USB enumeration failed' }),
     };
     await renderApp(backend);
     expect(screen.getByText(/Impossible de lister les cartes/)).toHaveTextContent('USB enumeration failed');

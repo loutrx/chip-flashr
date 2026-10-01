@@ -46,13 +46,16 @@ describe('flashReducer', () => {
   it('ignores progress after failure', () => {
     const failed = flashReducer(flashReducer(idle, { type: 'start' }), {
       type: 'failure',
-      error: { code: 'device-error', technical: 'timeout' },
+      error: { code: 'device-error', technical: 'timeout', phase: null, percent: null },
     });
     expect(flashReducer(failed, { type: 'progress', event: writing(99, 100) })).toBe(failed);
   });
 
   it('goes back to idle on reset', () => {
-    const done = flashReducer(idle, { type: 'success', report: { bytesWritten: 1, durationMs: 2, verified: true } });
+    const done = flashReducer(idle, {
+      type: 'success',
+      report: { bytesWritten: 1, durationMs: 2, verified: true, log: [] },
+    });
     expect(flashReducer(done, { type: 'reset' })).toEqual(idle);
   });
 });
@@ -62,10 +65,25 @@ describe('toUserFacingError', () => {
     expect(toUserFacingError({ code: 'cancelled', technical: 'cancelled by the user' })).toEqual({
       code: 'cancelled',
       technical: 'cancelled by the user',
+      phase: null,
+      percent: null,
+    });
+  });
+  it('keeps the phase and percent the job had reached', () => {
+    const phase = { kind: 'writing', index: 3, count: 4, label: 'thermostat.bin', address: 0x10000 };
+    expect(toUserFacingError({ code: 'device-error', technical: 'x', phase, percent: 41 })).toEqual({
+      code: 'device-error',
+      technical: 'x',
+      phase,
+      percent: 41,
+    });
+    expect(toUserFacingError({ code: 'device-error', technical: 'x', phase: { kind: 'nope' }, percent: 410 })).toMatchObject({
+      phase: null,
+      percent: null,
     });
   });
   it('wraps anything else as a device error', () => {
-    expect(toUserFacingError('IPC broken')).toEqual({ code: 'device-error', technical: 'IPC broken' });
+    expect(toUserFacingError('IPC broken')).toEqual({ code: 'device-error', technical: 'IPC broken', phase: null, percent: null });
     expect(toUserFacingError({ code: 'not-a-real-code', technical: 'x' }).code).toBe('device-error');
   });
 });

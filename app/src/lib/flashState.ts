@@ -50,13 +50,40 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<ErrorCode>([
   'already-running',
 ]);
 
+const PHASE_KINDS: ReadonlySet<string> = new Set<Phase['kind']>([
+  'connecting',
+  'erasing',
+  'writing',
+  'verifying',
+  'resetting',
+]);
+
+function phaseOrNull(value: unknown): Phase | null {
+  if (typeof value !== 'object' || value === null || !('kind' in value)) return null;
+  return typeof value.kind === 'string' && PHASE_KINDS.has(value.kind) ? (value as Phase) : null;
+}
+
+function percentOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 100 ? value : null;
+}
+
 /** Normalize whatever `invoke` rejected with into a UserFacingError. */
 export function toUserFacingError(error: unknown): UserFacingError {
   if (typeof error === 'object' && error !== null && 'code' in error && 'technical' in error) {
-    const { code, technical } = error as { code: unknown; technical: unknown };
+    const { code, technical } = error;
     if (typeof code === 'string' && KNOWN_CODES.has(code) && typeof technical === 'string') {
-      return { code: code as ErrorCode, technical };
+      return {
+        code: code as ErrorCode,
+        technical,
+        phase: 'phase' in error ? phaseOrNull(error.phase) : null,
+        percent: 'percent' in error ? percentOrNull(error.percent) : null,
+      };
     }
   }
-  return { code: 'device-error', technical: typeof error === 'string' ? error : (JSON.stringify(error) ?? String(error)) };
+  return {
+    code: 'device-error',
+    technical: typeof error === 'string' ? error : (JSON.stringify(error) ?? String(error)),
+    phase: null,
+    percent: null,
+  };
 }
