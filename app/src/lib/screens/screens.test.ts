@@ -1,14 +1,25 @@
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
-import type { ComponentProps } from 'svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { tick, type ComponentProps } from 'svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { firmware, snapshot, target, THERMOSTAT_IMAGES } from '../app/fixtures';
-import { estimateMs } from '../flashState';
-import { formatEstimate } from '../i18n/format';
+import { estimateMs, flashReducer, type FlashAction, type FlashState } from '../flashState';
+import { formatDuration, formatEstimate, formatPercent, formatVersion } from '../i18n/format';
 import { fr } from '../i18n/fr';
-import type { FirmwareSummary, Snapshot, Target } from '../types';
+import type {
+  FirmwareSummary,
+  FlashReport,
+  FlashRequest,
+  Phase,
+  Snapshot,
+  Target,
+  UserFacingError,
+} from '../types';
 import ChooseChipScreen from './ChooseChipScreen.svelte';
+import FailureScreen from './FailureScreen.svelte';
 import FirmwareListScreen from './FirmwareListScreen.svelte';
 import HomeScreen from './HomeScreen.svelte';
+import ProgrammingScreen from './ProgrammingScreen.svelte';
+import SuccessScreen from './SuccessScreen.svelte';
 
 // Fixtures with the mockup values ("Chip Flashr — Écrans", pages Main, Firmwares, ChoixPuce),
 // built on app/fixtures.ts (Task 5): the Thermostat package, the ESP32-S3 on COM4, both folders.
@@ -263,5 +274,227 @@ describe('FirmwareListScreen', () => {
     expect(props.onselect).toHaveBeenCalledWith(PASSERELLE.id);
     expect(props.onaddfolder).toHaveBeenCalledOnce();
     expect(props.onopenfile).toHaveBeenCalledOnce();
+  });
+});
+
+const REQUEST: FlashRequest = { firmwareId: THERMOSTAT.id, targetId: TARGET.id, family: null };
+const WRITING: Phase = { kind: 'writing', index: 3, count: 4, label: 'thermostat.bin', address: 0x10000 };
+
+/** Runs `actions` through the real reducer, so the fixtures have the steps the app would have. */
+function jobAfter<S extends FlashState['status']>(status: S, actions: FlashAction[]): Extract<FlashState, { status: S }> {
+  const state = actions.reduce(flashReducer, { status: 'idle' } as FlashState);
+  if (state.status !== status) throw new Error(`expected a ${status} job, got ${state.status}`);
+  return state as Extract<FlashState, { status: S }>;
+}
+
+const progressTo = (phase: Phase, share: number, at: number): FlashAction => ({
+  type: 'progress',
+  event: { phase, bytesDone: Math.round(THERMOSTAT_BYTES * share), bytesTotal: THERMOSTAT_BYTES },
+  at,
+});
+
+/** Writing thermostat.bin at 62 %, as on the `Flash` artifact page. */
+const RUNNING: FlashAction[] = [
+  { type: 'start', request: REQUEST, images: [...THERMOSTAT_IMAGES], at: 0 },
+  progressTo({ kind: 'connecting' }, 0, 0),
+  progressTo({ kind: 'erasing' }, 0, 800),
+  progressTo(WRITING, 0.4, 2_900),
+  progressTo(WRITING, 0.62, 4_400),
+];
+
+const REPORT: FlashReport = {
+  bytesWritten: THERMOSTAT_BYTES,
+  durationMs: 23_000,
+  verified: true,
+  log: ['connect ESP32-S3', 'verify ok', 'reset'],
+};
+
+const LOST: UserFacingError = {
+  code: 'device-error',
+  technical: 'write block 212/512 @ 0x0003A000\nerror: timed out waiting for response (3000 ms)',
+  phase: WRITING,
+  percent: 41,
+};
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+/** Matches an element's own text after `plain` normalisation. */
+const byPlainText = (text: string) => (content: string) => plain(content) === plain(text);
+
+describe('ProgrammingScreen', () => {
+  type Props = ComponentProps<typeof ProgrammingScreen>;
+
+  function renderProgramming(overrides: Partial<Props> = {}): Props {
+    const props: Props = {
+      firmware: THERMOSTAT,
+      target: TARGET,
+      job: jobAfter('flashing', RUNNING),
+      oncancel: vi.fn(),
+      ...overrides,
+    };
+    render(ProgrammingScreen, { props });
+    return props;
+  }
+
+  it('shows the board, the percent, the bar and the steps', () => {
+    const props = renderProgramming();
+    expect(screen.getByText('Thermostat')).toBeInTheDocument();
+    expect(screen.getByText(fr.pill.board('ESP32-S3', 'COM4'))).toBeInTheDocument();
+    expect(screen.getByText(fr.progress.title)).toBeInTheDocument();
+    expect(screen.getByText(byPlainText(formatPercent(props.job.percent, 'fr')))).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: fr.progress.barLabel })).toBeInTheDocument();
+    expect(screen.getByText(fr.steps.connecting)).toBeInTheDocument();
+    expect(screen.getByText(fr.steps.verifying)).toBeInTheDocument();
+    expect(screen.getByText(fr.progress.keepPlugged)).toBeInTheDocument();
+  });
+
+  it('shows the remaining time only once the job has one', () => {
+    const job = jobAfter('flashing', RUNNING);
+    const { unmount } = render(ProgrammingScreen, {
+      props: { firmware: THERMOSTAT, target: TARGET, job: { ...job, remainingMs: 8_200 }, oncancel: vi.fn() },
+    });
+    const remaining = fr.progress.remaining(formatDuration(8_200, 'fr'));
+    expect(screen.getByText(byPlainText(remaining))).toBeInTheDocument();
+    unmount();
+    renderProgramming({ job: { ...job, remainingMs: null } });
+    expect(screen.queryByText(byPlainText(remaining))).toBeNull();
+  });
+
+  it('cancels from the button at the bottom', async () => {
+    const props = renderProgramming();
+    await fireEvent.click(screen.getByRole('button', { name: fr.progress.cancel }));
+    expect(props.oncancel).toHaveBeenCalledOnce();
+  });
+});
+
+describe('SuccessScreen', () => {
+  type Props = ComponentProps<typeof SuccessScreen>;
+
+  function renderSuccess(overrides: Partial<Props> = {}): Props {
+    const props: Props = {
+      firmware: THERMOSTAT,
+      target: TARGET,
+      job: jobAfter('success', [...RUNNING, { type: 'success', report: REPORT, at: 23_000 }]),
+      boardsThisSession: 3,
+      onagain: vi.fn(),
+      onreport: vi.fn(async () => undefined),
+      onhome: vi.fn(),
+      ...overrides,
+    };
+    render(SuccessScreen, { props });
+    return props;
+  }
+
+  /** The value shown in the stat tile labelled `label` (StatTile renders label and value side by side). */
+  const tileOf = (label: string) => screen.getByText(label).parentElement;
+
+  it('names the firmware, the chip and the port, with the three stats', () => {
+    renderSuccess();
+    expect(screen.getByRole('heading', { name: fr.success.title })).toBeInTheDocument();
+    const body = fr.success.body(`Thermostat ${formatVersion('1.4.2')}`, 'ESP32-S3', 'COM4');
+    expect(screen.getByText(byPlainText(body))).toBeInTheDocument();
+    expect(tileOf(fr.success.verification)).toHaveTextContent(fr.success.verified);
+    expect(tileOf(fr.success.duration)).toHaveTextContent(plain(formatDuration(23_000, 'fr')));
+    expect(tileOf(fr.success.sessionBoards)).toHaveTextContent('3');
+  });
+
+  it('offers another board and the way home', async () => {
+    const props = renderSuccess();
+    await fireEvent.click(screen.getByRole('button', { name: fr.success.again }));
+    await fireEvent.click(screen.getByRole('button', { name: fr.success.home }));
+    expect(props.onagain).toHaveBeenCalledOnce();
+    expect(props.onhome).toHaveBeenCalledOnce();
+  });
+
+  it('says "Copié" for two seconds once the report is copied', async () => {
+    vi.useFakeTimers();
+    const props = renderSuccess();
+    await fireEvent.click(screen.getByRole('button', { name: fr.success.report }));
+    await vi.advanceTimersByTimeAsync(0);
+    await tick();
+    expect(props.onreport).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: fr.success.copied })).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(2_000);
+    await tick();
+    expect(screen.getByRole('button', { name: fr.success.report })).toBeInTheDocument();
+  });
+
+  it('never claims a copy the clipboard refused', async () => {
+    renderSuccess({ onreport: vi.fn(() => Promise.reject(new Error('denied'))) });
+    await fireEvent.click(screen.getByRole('button', { name: fr.success.report }));
+    await tick();
+    expect(screen.queryByRole('button', { name: fr.success.copied })).toBeNull();
+  });
+});
+
+describe('FailureScreen', () => {
+  type Props = ComponentProps<typeof FailureScreen>;
+
+  function failed(error: UserFacingError) {
+    return jobAfter('failure', [...RUNNING, { type: 'failure', error, at: 5_000 }]);
+  }
+
+  function renderFailure(overrides: Partial<Props> = {}): Props {
+    const props: Props = {
+      firmware: THERMOSTAT,
+      job: failed(LOST),
+      onretry: vi.fn(),
+      onexport: vi.fn(async () => undefined),
+      onhome: vi.fn(),
+      ...overrides,
+    };
+    render(FailureScreen, { props });
+    return props;
+  }
+
+  it('says where it stopped, the probable causes and the technical lines', () => {
+    const { container } = render(FailureScreen, {
+      props: { firmware: THERMOSTAT, job: failed(LOST), onretry: vi.fn(), onexport: vi.fn(), onhome: vi.fn() },
+    });
+    const text = fr.errors['device-error'];
+    expect(screen.getByRole('heading', { name: text.title })).toBeInTheDocument();
+    const at = fr.failure.at(fr.failure.stepNoun.writing, formatPercent(41, 'fr'));
+    expect(screen.getByText(byPlainText(text.explanation(at)))).toBeInTheDocument();
+    expect(text.causes.length).toBeGreaterThan(0);
+    expect(screen.getByText(fr.failure.causesTitle)).toBeInTheDocument();
+    for (const cause of text.causes) expect(screen.getByText(cause.title)).toBeInTheDocument();
+    expect(container.querySelector('details')).toHaveAttribute('open');
+    expect(screen.getByText(fr.failure.details)).toBeInTheDocument();
+    expect(screen.getByText('write block 212/512 @ 0x0003A000')).toBeInTheDocument();
+    expect(screen.getByText('error: timed out waiting for response (3000 ms)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: fr.failure.home })).toBeInTheDocument();
+  });
+
+  it('explains without a step when the error has no phase', () => {
+    renderFailure({ job: failed({ ...LOST, phase: null, percent: null }) });
+    expect(screen.getByText(fr.errors['device-error'].explanation(null))).toBeInTheDocument();
+  });
+
+  it('retries, and exports the report with the same "Copié" feedback', async () => {
+    vi.useFakeTimers();
+    const props = renderFailure();
+    await fireEvent.click(screen.getByRole('button', { name: fr.failure.retry }));
+    expect(props.onretry).toHaveBeenCalledOnce();
+    await fireEvent.click(screen.getByRole('button', { name: fr.failure.export }));
+    await vi.advanceTimersByTimeAsync(0);
+    await tick();
+    expect(props.onexport).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: fr.failure.copied })).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(2_000);
+    await tick();
+    expect(screen.getByRole('button', { name: fr.failure.export })).toBeInTheDocument();
+  });
+
+  it('shows a cancel as neutral, and goes home from any failure', async () => {
+    const props = renderFailure({
+      job: failed({ code: 'cancelled', technical: 'cancelled by the user', phase: WRITING, percent: 30 }),
+    });
+    const text = fr.errors.cancelled;
+    expect(screen.getByRole('heading', { name: text.title })).toBeInTheDocument();
+    expect(screen.queryByText(fr.failure.causesTitle) !== null).toBe(text.causes.length > 0);
+    await fireEvent.click(screen.getByRole('button', { name: fr.failure.home }));
+    expect(props.onhome).toHaveBeenCalledOnce();
   });
 });
