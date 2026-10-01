@@ -95,6 +95,89 @@ The customer unzips, double-clicks, plugs the board in and presses **Programmer*
 
 Details: [docs/user-guide.md](docs/user-guide.md) · [docs/firmware-packages.md](docs/firmware-packages.md)
 
+## Firmware package format
+
+What Chip Flashr accepts as input. No custom format is needed: standard build outputs work as they are. A *package* is just a `.zip` (or a loose file) that tells the app **what to write where**.
+
+### Accepted inputs
+
+| Input | Typical producer | Flash addresses come from |
+|---|---|---|
+| `.zip` with `flasher_args.json` **(recommended for ESP32)** | ESP-IDF `idf.py build` | `flasher_args.json` |
+| `.zip` with `.bin` files + partition table | ESP-IDF, custom scripts | Partition table + per-chip rules |
+| Arduino IDE export (`*.ino.bin`, `*.ino.merged.bin`…) | *Sketch → Export compiled binary* | Arduino conventions (merged image preferred) |
+| PlatformIO output (`firmware.bin`, `bootloader.bin`, `partitions.bin`) | `.pio/build/<env>/` | PlatformIO conventions |
+| Single merged `.bin` | `esptool merge-bin` | Written at `0x0` |
+| `.elf` / Intel `.hex` | Any toolchain, STM32CubeIDE, nRF Connect SDK | Embedded in the file |
+
+### The recommended ESP32 package
+
+Zip `flasher_args.json` with the binaries it lists, **keeping their paths relative to `build/`**:
+
+```text
+myproduct_v1.4.2_esp32s3_prod.zip
+├── flasher_args.json                     ← required: the map of what goes where
+├── bootloader/bootloader.bin             → 0x0     (0x1000 on ESP32 / ESP32-S2)
+├── partition_table/partition-table.bin   → 0x8000
+├── ota_data_initial.bin                  → otadata (only with OTA partitions)
+└── myproduct.bin                         → factory or ota_0
+```
+
+Chip Flashr reads these fields of `flasher_args.json` and ignores the others:
+
+| Field | Used for |
+|---|---|
+| `flash_files` | Offset → file, relative to the JSON. The whole flash plan |
+| `extra_esptool_args.chip` | Target chip (`esp32`, `esp32s3`, `esp32c3`…). Checked against the connected chip before writing |
+| `extra_esptool_args.before` / `after` | Reset strategy. Both spellings are accepted: `hard_reset` (ESP-IDF ≤ 5) and `hard-reset` (ESP-IDF 6) |
+| `flash_settings` | Flash mode, size, frequency. Shown in Expert mode; the images are written as built, never re-patched |
+
+Files are looked up with the same relative path first, then by file name anywhere in the zip. So both "zip the whole `build/` folder" and "zip only the `.bin` files and the JSON" work. Entry names with `\` (zips made with PowerShell's `Compress-Archive`) are accepted.
+
+### File name
+
+```text
+<project>_<version>_<chip>[_<variant>].zip
+
+myproduct_v1.4.2_esp32s3_prod.zip
+```
+
+| Field | Rule |
+|---|---|
+| `project` | Letters, digits, `-`. No `_`, it's the separator (`my_product` → `my-product`) |
+| `version` | SemVer, optional leading `v`, pre-release allowed (`-rc2`) |
+| `chip` | Lower-case chip id: `esp32s3`, `stm32f411`, `nrf52840`… |
+| `variant` | Optional free word: `prod`, `test`, a customer code… |
+
+The name is optional. For ESP-IDF images the app reads the **project name, version and build date from the binary itself** (`esp_app_desc_t`), and the file name only completes it.
+
+### What is checked before *Program* is enabled
+
+- every file listed in `flash_files` is present in the zip;
+- no zip entry escapes the archive (`../`), sizes are sane;
+- regions don't overlap and fit in the connected chip's flash;
+- the package's chip matches the connected chip (an `esp32s3` package is refused on an ESP32-C3, before anything is written).
+
+Only the listed regions are written: the rest of the flash, **NVS settings included, is kept**. Erasing the whole chip is a separate, confirmed action in Expert mode.
+
+### Making a package from an ESP-IDF build
+
+After `idf.py build`, zip `build/flasher_args.json` and the files it lists. A PowerShell sketch, from the project root (paths are made absolute because .NET ignores PowerShell's current folder):
+
+```powershell
+$b = (Resolve-Path 'build').Path; $zip = "$PWD\myproduct_v1.4.2_esp32s3.zip"
+$fa = Get-Content "$b\flasher_args.json" -Raw | ConvertFrom-Json
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$z = [IO.Compression.ZipFile]::Open($zip, 'Create')
+[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($z, "$b\flasher_args.json", 'flasher_args.json') | Out-Null
+foreach ($f in $fa.flash_files.PSObject.Properties.Value) {
+    [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($z, "$b\$f", $f) | Out-Null
+}
+$z.Dispose()
+```
+
+This exact layout was flashed on a real ESP32-S3 product (ESP-IDF 6.0.2, two OTA slots): see the [field test](docs/superpowers/specs/2026-10-01-esp32-field-test.md). Full resolution rules, partition-table fallback and Arduino/PlatformIO conventions: [docs/firmware-packages.md](docs/firmware-packages.md).
+
 ## Supported chips (planned)
 
 | Family | How | Hardware you need | Extra software |

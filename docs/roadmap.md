@@ -19,8 +19,8 @@ flowchart LR
 | # | Milestone | Done when | Status |
 |---|---|---|---|
 | **M0** | **Design UX/UI**: 15 screens, visual language, UX decisions | Mockups validated | ✅ First pass done. Second pass later (user tests, onboarding, multi-board, English copy) |
-| **M1** | **Foundations**: Rust workspace, `FlashBackend` trait, Tauri shell, UI built from the mockups, CI on 3 OSes | App builds and runs on Windows, macOS and Linux in CI with a mock backend simulating a flash | ⏭️ Next |
-| **M2** | **Packages & formats**: discovery, watched folders, zip, `flasher_args.json`, partition tables, Arduino/PlatformIO, HEX/ELF, naming, validation, instructions panel | Real ESP-IDF, Arduino and PlatformIO outputs are recognised and resolved (with the mock backend) | |
+| **M1** | **Foundations**: Rust workspace, `FlashBackend` trait, Tauri shell, UI built from the mockups, CI on 3 OSes | App builds and runs on Windows, macOS and Linux in CI with a mock backend simulating a flash | 🚧 In progress: plans 1 and 2 done, plan 3 (Simple-mode screens) next |
+| **M2** | **Packages & formats**: discovery, watched folders, zip, `flasher_args.json`, partition tables, Arduino/PlatformIO, HEX/ELF, naming, validation, instructions panel | Real ESP-IDF, Arduino and PlatformIO outputs are recognised and resolved (with the mock backend) | ESP-IDF 6 package path validated on hardware ahead of time ([field test](superpowers/specs/2026-10-01-esp32-field-test.md)) |
 | **M3** | **ESP32 backend**: `espflash` integration, detection, download-mode help, Windows driver guidance | ESP32, S3 and C3 flashed in Simple and Expert mode on Windows and macOS | |
 | **M4** | **v0.1 signed release**: SignPath signing, portable exe, AppImage, release pipeline, user docs | A non-technical person flashes an ESP32 package on a clean Windows machine without a blocking warning | |
 | **M5** | **STM32 backend**: `probe-rs` (ST-Link, J-Link, CMSIS-DAP), USB DFU, RDP detection | F0/F4/G0/L4 flashed via ST-Link, plus one board via DFU | |

@@ -98,7 +98,8 @@ pub trait FlashBackend: Send + Sync {
     /// Connect and read chip identity (model, revision, flash size, MAC, protection).
     fn identify(&self, target: &Target) -> Result<ChipInfo, FlashError>;
 
-    /// Execute a resolved plan: erase → write each region → verify → reset.
+    /// Execute a resolved plan: write each region (its sectors only) → verify → reset.
+    /// Never a full erase: NVS and other unlisted regions survive an update.
     fn flash(
         &self,
         target: &Target,
