@@ -50,16 +50,12 @@
 </details>
 
 <div class="grow"></div>
-<div class="actions">
-  <div class="row">
-    <Button variant="primary" size="lg" wide icon="refresh" onclick={onretry}>{m.failure.retry}</Button>
-    <Button size="lg" icon="download" onclick={() => void feedback.run(onexport)}>
-      {feedback.copied ? m.failure.copied : m.failure.export}
-    </Button>
-  </div>
-  <div class="more">
-    <Button variant="ghost" icon="chevronLeft" onclick={onhome}>{m.failure.home}</Button>
-  </div>
+<div class="row">
+  <Button variant="primary" size="lg" wide icon="refresh" onclick={onretry}>{m.failure.retry}</Button>
+  <Button size="lg" icon="download" onclick={() => void feedback.run(onexport)}>
+    {feedback.copied ? m.failure.copied : m.failure.export}
+  </Button>
+  <Button variant="ghost" size="lg" icon="chevronLeft" onclick={onhome}>{m.failure.home}</Button>
 </div>
 
 <style>
@@ -80,17 +76,8 @@
   .grow {
     flex-grow: 1;
   }
-  .actions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
   .row {
     display: flex;
     gap: 12px;
-  }
-  .more {
-    display: flex;
-    justify-content: center;
   }
 </style>
