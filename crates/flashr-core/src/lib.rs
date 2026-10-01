@@ -6,6 +6,7 @@ pub mod family;
 pub mod mock;
 pub mod plan;
 pub mod progress;
+pub mod snapshot;
 pub mod target;
 
 pub use backend::FlashBackend;
@@ -14,4 +15,8 @@ pub use family::Family;
 pub use mock::{MockBackend, demo_plan};
 pub use plan::{EraseScope, FlashPlan, PlanError, Region};
 pub use progress::{CancelToken, Phase, ProgressEvent, ProgressSink, RecordingSink};
-pub use target::{ChipInfo, FlashReport, Target};
+pub use snapshot::{
+    Check, CheckCode, CheckStatus, DeviceIssue, Download, FamilyGuess, FirmwareSummary, FolderKind,
+    GuessReason, ImageEntry, LockKind, Readme, Snapshot, SourceKind, ToolStatus, WatchedFolder,
+};
+pub use target::{ChipInfo, FlashReport, Link, Target};

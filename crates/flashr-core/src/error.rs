@@ -1,7 +1,7 @@
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::{Family, PlanError};
+use crate::{Family, Phase, PlanError};
 
 #[derive(Debug, Error)]
 pub enum FlashError {
@@ -36,6 +36,9 @@ pub enum ErrorCode {
 pub struct UserFacingError {
     pub code: ErrorCode,
     pub technical: String,
+    /// Where the job stood when it failed ("à 41 %" on the failure screen).
+    pub phase: Option<Phase>,
+    pub percent: Option<u8>,
 }
 
 impl UserFacingError {
@@ -43,6 +46,16 @@ impl UserFacingError {
         Self {
             code,
             technical: technical.into(),
+            phase: None,
+            percent: None,
+        }
+    }
+
+    pub fn at(self, phase: Phase, percent: u8) -> Self {
+        Self {
+            phase: Some(phase),
+            percent: Some(percent),
+            ..self
         }
     }
 }
@@ -56,10 +69,7 @@ impl From<&FlashError> for UserFacingError {
             FlashError::FamilyMismatch { .. } => ErrorCode::FamilyMismatch,
             FlashError::Device(_) => ErrorCode::DeviceError,
         };
-        Self {
-            code,
-            technical: err.to_string(),
-        }
+        Self::new(code, err.to_string())
     }
 }
 
@@ -92,6 +102,7 @@ mod tests {
             let ui = UserFacingError::from(&err);
             assert_eq!(ui.code, code);
             assert_eq!(ui.technical, err.to_string());
+            assert_eq!((ui.phase, ui.percent), (None, None));
         }
     }
 
@@ -100,7 +111,41 @@ mod tests {
         let e = UserFacingError::new(ErrorCode::AlreadyRunning, "busy");
         assert_eq!(
             serde_json::to_value(&e).unwrap(),
-            serde_json::json!({ "code": "already-running", "technical": "busy" })
+            serde_json::json!({
+                "code": "already-running",
+                "technical": "busy",
+                "phase": null,
+                "percent": null
+            })
+        );
+    }
+
+    #[test]
+    fn at_records_where_the_job_stopped() {
+        let e = UserFacingError::new(ErrorCode::DeviceError, "lost").at(
+            Phase::Writing {
+                index: 3,
+                count: 4,
+                label: "thermostat.bin".into(),
+                address: 0x1_0000,
+            },
+            41,
+        );
+        assert_eq!(e.percent, Some(41));
+        assert_eq!(
+            serde_json::to_value(&e).unwrap(),
+            serde_json::json!({
+                "code": "device-error",
+                "technical": "lost",
+                "phase": {
+                    "kind": "writing",
+                    "index": 3,
+                    "count": 4,
+                    "label": "thermostat.bin",
+                    "address": 65536
+                },
+                "percent": 41
+            })
         );
     }
 }

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use crate::{
     CancelToken, ChipInfo, EraseScope, Family, FlashBackend, FlashError, FlashPlan, FlashReport,
-    Phase, ProgressEvent, ProgressSink, Region, Target,
+    Link, Phase, ProgressEvent, ProgressSink, Region, Target,
 };
 
 /// Size of one simulated write, like a flash sector.
@@ -30,6 +30,10 @@ impl MockBackend {
             id: id.into(),
             family,
             label: label.into(),
+            chip: None,
+            port: "mock".into(),
+            link: Link::UsbJtag,
+            flash_size: Some(8 * 1024 * 1024),
         }
     }
 
@@ -123,6 +127,7 @@ impl FlashBackend for MockBackend {
             bytes_written: done,
             duration_ms: started.elapsed().as_millis() as u64,
             verified: plan.verify,
+            log: Vec::new(),
         })
     }
 

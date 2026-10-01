@@ -1,10 +1,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Where a flash job currently is.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum Phase {
     Connecting,
@@ -116,6 +116,30 @@ mod tests {
                 "bytesDone": 10,
                 "bytesTotal": 20
             })
+        );
+    }
+
+    #[test]
+    fn phase_round_trips_through_json() {
+        let phases = [
+            Phase::Connecting,
+            Phase::Erasing,
+            Phase::Writing {
+                index: 0,
+                count: 1,
+                label: "firmware.hex".into(),
+                address: 0x0800_0000,
+            },
+            Phase::Verifying,
+            Phase::Resetting,
+        ];
+        for phase in phases {
+            let wire = serde_json::to_value(&phase).unwrap();
+            assert_eq!(serde_json::from_value::<Phase>(wire).unwrap(), phase);
+        }
+        assert_eq!(
+            serde_json::from_value::<Phase>(serde_json::json!({ "kind": "verifying" })).unwrap(),
+            Phase::Verifying
         );
     }
 
