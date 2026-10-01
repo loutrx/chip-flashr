@@ -88,9 +88,9 @@
     transform: translateY(2px);
     box-shadow: var(--cf-shadow-raised-active);
   }
+  /* A detected family is read-only but stays at full strength, as in the Main page. */
   .family:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+    cursor: default;
   }
   /* The 2 px border takes 1 px of padding so the content does not move (ChoixPuce page). */
   .ambiguous {
