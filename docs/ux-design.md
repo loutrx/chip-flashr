@@ -18,25 +18,34 @@ flowchart TD
     scan -- none --> S10["10 · No firmware"]
     scan -- several --> S02["02 · Firmware list"]
     scan -- one --> S01["01 · Home: package ready"]
+    S10 -- "one firmware found" --> S01
+    S10 -- "several found" --> S02
     S02 --> S01
-    S01 -- "ambiguous family" --> S03["03 · Choose the chip"]
+    S02 -- "ambiguous family" --> S03["03 · Choose the chip"]
+    S02 -- "package broken" --> S11["11 · Incomplete package"]
     S03 --> S01
-    S01 -- "package broken" --> S11["11 · Incomplete package"]
+    S03 -- "no board" --> S04
+    S01 -- "Changer" --> S02
     S01 -- "no board" --> S04["04 · Waiting for the board"]
     S04 -- "driver missing" --> S08["08 · Missing USB driver"]
     S04 -- "tool missing / chip locked" --> S09["09 · External tool required"]
-    S08 --> S04
-    S09 --> S04
-    S04 --> S01
+    S08 -- "re-check" --> S01
+    S09 -- "re-check" --> S01
+    S04 -- "board plugged in" --> S01
     S01 -- Program --> S05["05 · Programming"]
     S05 --> S06["06 · Success"]
     S05 --> S07["07 · Failure"]
     S07 -- Retry --> S05
-    S06 -- "another board" --> S05
+    S07 -- "home" --> S01
+    S06 -- "another board" --> S01
+    S06 -- "another board, none plugged" --> S04
+    S06 -- "home" --> S01
     S01 -. "Expert" .-> S12["12 · Expert mode"]
     S12 -.-> S13["13 · Create a package"]
     S01 -. "settings" .-> S14["14 · Settings"]
 ```
+
+Each screen is derived from the facts the app knows, so it also changes on its own: unplugging the board on 01 shows 04, plugging it back shows 01.
 
 ## Mockups
 

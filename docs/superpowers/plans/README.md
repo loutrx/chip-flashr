@@ -17,7 +17,7 @@ flowchart LR
 |---|---|---|---|
 | [1 · Foundations](2026-09-26-plan-1-foundations.md) | Cargo workspace, `flashr-core` (domain types, `FlashBackend` trait, mock backend), Tauri 2 shell, Svelte 5 frontend with a demo flash screen wired end to end, CI on Windows/macOS/Linux | M1 | Done |
 | [2 · Design system & app shell](2026-09-27-plan-2-design-system.md) | Local fonts, clay components (buttons, cards, pills, family selector), top bar, instructions panel layout, Simple/Expert switch, FR/EN i18n, light/dark | M1 | Done |
-| 3a · Simple mode: foundation and nominal path | Snapshot model and IPC, scenario-driven mock, `screenOf`, screens 01, 02, 03, 05, 06, 07. [Spec](../specs/2026-10-01-simple-mode-screens-design.md) · [plan](2026-10-01-plan-3a-simple-mode-foundation.md) | M1 | Ready |
+| 3a · Simple mode: foundation and nominal path | Snapshot model and IPC, scenario-driven mock, `screenOf`, screens 01, 02, 03, 05, 06, 07. [Spec](../specs/2026-10-01-simple-mode-screens-design.md) · [plan](2026-10-01-plan-3a-simple-mode-foundation.md) | M1 | Done |
 | 3b · Simple mode: problem screens | Screens 04, 08, 09, 10, 11 on the 3a foundation. Same spec | M1 | To write |
 | 4 · Firmware packages | `flashr-package` + `flashr-config`: watched folders, zip, `flasher_args.json`, partition tables, Arduino/PlatformIO, HEX/ELF, naming, validation, live README panel. Input: [field test](../specs/2026-10-01-esp32-field-test.md) | M2 | To write |
 | 5 · Expert mode & packages | Screens 12 to 14: file table, partition map, log, Create a package, Settings | M2 | To write |

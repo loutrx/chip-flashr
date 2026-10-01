@@ -155,6 +155,8 @@ classDiagram
 
 A `FlashPlan` is **backend-agnostic**: a list of `(address, bytes)` regions plus options. `flashr-package` produces it from whatever file the user dropped; the backend only executes it. The same plan is shown in Expert mode (file table) and in Simple mode (the compact file chips).
 
+The app shell talks to the UI through seven commands and one event: `app_info`, `snapshot` (initial state) and the `snapshot-changed` event, `flash(firmwareId, targetId, family)` with progress on a channel, `cancel_flash`, `recheck`, `add_folder` and `open_file`. Errors cross as `UserFacingError` with the phase and percent at which a job stopped.
+
 ## From a file on disk to a flashed chip
 
 ```mermaid
@@ -193,30 +195,47 @@ Flashing is blocking I/O. Each job runs on a dedicated worker (`spawn_blocking`)
 
 ## Application states
 
-What the Simple-mode screen shows is a direct function of this state machine. Each state has a mockup in [ux-design.md](ux-design.md).
+The Simple-mode screen is **derived, never stored** ([plan 3 spec](superpowers/specs/2026-10-01-simple-mode-screens-design.md#choosing-the-screen)). The Rust side reports facts in a `Snapshot` (watched folders, firmware summaries, targets, device issues) and emits `snapshot-changed` whenever they change. The UI keeps the user's choices (picked firmware, confirmed family, list open) and the flash job. `screenOf(snapshot, choices, job)` returns the first rule that applies:
+
+| # | Condition | Screen |
+|---|---|---|
+| 1 | job flashing / succeeded / failed | 05 Programming / 06 Success / 07 Failure |
+| 2 | no firmware | 10 No firmware |
+| 3 | list opened with "Changer", or several firmwares and none picked | 02 Firmware list |
+| 4 | the current firmware has a check in error | 11 Incomplete package |
+| 5 | family not certain and not confirmed | 03 Choose the chip |
+| 6 | a driver or tool problem for that family | 08 Missing driver / 09 External tool |
+| 7 | no board of that family | 04 Waiting for the board |
+| 8 | otherwise | 01 Home: package ready |
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Scanning
-    Scanning --> NoFirmware: nothing found
-    Scanning --> PickFirmware: several found
-    Scanning --> FirmwareReady: exactly one
-    NoFirmware --> Scanning: file dropped / folder added
-    PickFirmware --> FirmwareReady: user picks
-    FirmwareReady --> Invalid: validation failed
-    Invalid --> Scanning: file replaced
-    FirmwareReady --> NeedsFamily: family ambiguous
-    NeedsFamily --> FirmwareReady: user picks a family
-    FirmwareReady --> WaitingForBoard: no target
+    [*] --> NoFirmware: nothing found
+    [*] --> FirmwareList: several found
+    [*] --> Home: one, valid, certain, board present
+    NoFirmware --> Home: one valid firmware appears
+    NoFirmware --> FirmwareList: several appear
+    FirmwareList --> Incomplete: pick a broken package
+    FirmwareList --> ChooseChip: pick an ambiguous file
+    FirmwareList --> Home: pick a firmware
+    ChooseChip --> WaitingForBoard: family confirmed, no board
+    ChooseChip --> Home: family confirmed, board present
+    Home --> WaitingForBoard: board unplugged
     WaitingForBoard --> MissingDependency: device seen, driver or tool missing
-    MissingDependency --> WaitingForBoard: re-check OK
-    WaitingForBoard --> Ready: target found
-    Ready --> Flashing: Program
-    Flashing --> Success
-    Flashing --> Failure
-    Failure --> Ready: Retry
-    Success --> Ready: Program another board
+    MissingDependency --> Home: re-check OK
+    WaitingForBoard --> Home: board plugged in
+    Home --> Programming: Program
+    Programming --> Success
+    Programming --> Failure
+    Failure --> Programming: Retry
+    Failure --> Home: Back to home
+    Success --> Home: Program another board (once a board is present)
+    Success --> WaitingForBoard: another board, none plugged
+    Success --> Home: Back to home
+    Home --> FirmwareList: Change
 ```
+
+Until real packages (plan 4) and real boards (plan 6) exist, the facts come from simulated scenarios: JSON files in `crates/flashr-core/scenarios/`, read by the Rust mock and by the browser preview alike.
 
 ## Configuration
 
