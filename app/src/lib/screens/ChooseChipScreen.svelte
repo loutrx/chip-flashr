@@ -75,9 +75,19 @@
     gap: 12px;
   }
   .to-choose {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 12px;
     font-weight: 600;
-    color: var(--cf-warn);
+    color: var(--cf-ink);
+  }
+  .to-choose::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cf-warn);
   }
   .grow {
     flex-grow: 1;

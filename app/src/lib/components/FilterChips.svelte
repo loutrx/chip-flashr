@@ -45,7 +45,7 @@
       box-shadow 0.18s ease,
       background-color 0.18s ease;
   }
-  .chip:hover {
+  .chip:hover:not(.selected) {
     transform: translateY(-2px);
   }
   .chip:active:not(.selected) {

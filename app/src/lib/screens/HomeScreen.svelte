@@ -49,7 +49,7 @@
   <div class="family-head">
     <SectionLabel>{m.families.label}</SectionLabel>
     {#if certain}
-      <span class="detected"><Icon name="check" size={14} strokeWidth={2.2} />{m.families.detected}</span>
+      <span class="detected"><span class="mark"><Icon name="check" size={14} strokeWidth={2.2} /></span>{m.families.detected}</span>
     {/if}
   </div>
   <FamilySelector value={family} disabled={certain || !onfamily} onchange={(next) => onfamily?.(next)} />
@@ -81,6 +81,10 @@
     gap: 6px;
     font-size: 12px;
     font-weight: 600;
+    color: var(--cf-ink);
+  }
+  .mark {
+    display: inline-flex;
     color: var(--cf-ok);
   }
   .grow {
