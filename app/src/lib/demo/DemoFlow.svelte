@@ -56,7 +56,9 @@
   </Card>
   <Callout>{m.progress.keepPlugged}</Callout>
 {:else if flash.status === 'success'}
-  <ResultHero tone="success" title={m.success.title}>{m.success.body(board)}</ResultHero>
+  <ResultHero tone="success" title={m.success.title}>
+    {m.success.body(board, selected?.label ?? '', selected?.port ?? '')}
+  </ResultHero>
   <div class="stats">
     <div class="stat">
       <span class="stat-label">{m.success.verification}</span>
@@ -79,7 +81,7 @@
 {:else if flash.status === 'failure'}
   {@const error = m.errors[flash.error.code]}
   <ResultHero tone={flash.error.code === 'cancelled' ? 'neutral' : 'failure'} title={error.title}>
-    {error.explanation}
+    {error.explanation(null)}
   </ResultHero>
   <details class="details">
     <summary>{m.failure.details}</summary>
