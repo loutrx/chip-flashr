@@ -1,0 +1,75 @@
+{
+  "name": "ambiguous-hex",
+  "stages": [
+    {
+      "snapshot": {
+        "folders": [{"path": "C:\\Livraison", "kind": "app"}, {"path": "D:\\Firmwares", "kind": "watched"}],
+        "firmwares": [
+          {
+            "id": "firmware-hex",
+            "path": "D:\\Firmwares\\firmware.hex",
+            "fileName": "firmware.hex",
+            "folder": 1,
+            "source": "hex",
+            "name": null,
+            "version": null,
+            "variant": null,
+            "chip": null,
+            "family": {"kind": "suggested", "family": "stm32", "reason": {"kind": "start-address", "address": 134217728}},
+            "toolchain": null,
+            "builtAt": "2026-09-21T16:48:00",
+            "sizeBytes": 126976,
+            "addressRanges": 1,
+            "images": [{"address": 134217728, "name": "firmware.hex", "size": 126976}],
+            "manifest": null,
+            "checks": [],
+            "readme": null
+          }
+        ],
+        "targets": [],
+        "issues": []
+      },
+      "next": [{"on": {"afterMs": 8000}, "to": 1}]
+    },
+    {
+      "snapshot": {
+        "folders": [{"path": "C:\\Livraison", "kind": "app"}, {"path": "D:\\Firmwares", "kind": "watched"}],
+        "firmwares": [
+          {
+            "id": "firmware-hex",
+            "path": "D:\\Firmwares\\firmware.hex",
+            "fileName": "firmware.hex",
+            "folder": 1,
+            "source": "hex",
+            "name": null,
+            "version": null,
+            "variant": null,
+            "chip": null,
+            "family": {"kind": "suggested", "family": "stm32", "reason": {"kind": "start-address", "address": 134217728}},
+            "toolchain": null,
+            "builtAt": "2026-09-21T16:48:00",
+            "sizeBytes": 126976,
+            "addressRanges": 1,
+            "images": [{"address": 134217728, "name": "firmware.hex", "size": 126976}],
+            "manifest": null,
+            "checks": [],
+            "readme": null
+          }
+        ],
+        "targets": [
+          {
+            "id": "mock:stm32f411:ST-Link",
+            "family": "stm32",
+            "label": "STM32F411",
+            "chip": "stm32f411",
+            "port": "ST-Link",
+            "link": {"kind": "probe", "name": "ST-Link V3"},
+            "flashSize": 524288
+          }
+        ],
+        "issues": []
+      },
+      "next": []
+    }
+  ]
+}

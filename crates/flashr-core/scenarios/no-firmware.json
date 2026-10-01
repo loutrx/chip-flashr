@@ -1,0 +1,65 @@
+{
+  "name": "no-firmware",
+  "stages": [
+    {
+      "snapshot": {
+        "folders": [{"path": "C:\\Livraison", "kind": "app"}, {"path": "D:\\Firmwares", "kind": "watched"}],
+        "firmwares": [],
+        "targets": [],
+        "issues": []
+      },
+      "next": [{"on": "add-folder", "to": 1}, {"on": "open-file", "to": 1}]
+    },
+    {
+      "snapshot": {
+        "folders": [{"path": "C:\\Livraison", "kind": "app"}, {"path": "D:\\Firmwares", "kind": "watched"}],
+        "firmwares": [
+          {
+            "id": "thermostat-1.4.2-prod",
+            "path": "C:\\Livraison\\thermostat_v1.4.2_esp32s3_prod.zip",
+            "fileName": "thermostat_v1.4.2_esp32s3_prod.zip",
+            "folder": 0,
+            "source": "esp-idf-build",
+            "name": "Thermostat",
+            "version": "1.4.2",
+            "variant": "prod",
+            "chip": "esp32s3",
+            "family": {"kind": "certain", "family": "esp32"},
+            "toolchain": "ESP-IDF 5.3",
+            "builtAt": "2026-09-12T14:32:00",
+            "sizeBytes": 1186202,
+            "addressRanges": 4,
+            "images": [
+              {"address": 0, "name": "bootloader.bin", "size": 21504},
+              {"address": 32768, "name": "partition-table.bin", "size": 3072},
+              {"address": 53248, "name": "ota_data_initial.bin", "size": 8192},
+              {"address": 65536, "name": "thermostat.bin", "size": 1153434}
+            ],
+            "manifest": "flasher_args.json",
+            "checks": [
+              {"status": "ok", "code": "manifest-read", "params": {"chip": "esp32s3", "count": "4", "manifest": "flasher_args.json"}},
+              {"status": "ok", "code": "file-present", "params": {"address": "0x0", "file": "bootloader.bin", "size": "21504"}},
+              {"status": "ok", "code": "file-present", "params": {"address": "0x8000", "file": "partition-table.bin", "size": "3072"}},
+              {"status": "ok", "code": "file-present", "params": {"address": "0xD000", "file": "ota_data_initial.bin", "size": "8192"}},
+              {"status": "ok", "code": "file-present", "params": {"address": "0x10000", "file": "thermostat.bin", "size": "1153434"}}
+            ],
+            "readme": {"fileName": "LISEZMOI.md"}
+          }
+        ],
+        "targets": [
+          {
+            "id": "mock:esp32s3:COM4",
+            "family": "esp32",
+            "label": "ESP32-S3",
+            "chip": "esp32s3",
+            "port": "COM4",
+            "link": {"kind": "usb-jtag"},
+            "flashSize": 8388608
+          }
+        ],
+        "issues": []
+      },
+      "next": []
+    }
+  ]
+}

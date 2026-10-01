@@ -1,0 +1,58 @@
+{
+  "name": "incomplete",
+  "stages": [
+    {
+      "snapshot": {
+        "folders": [{"path": "C:\\Livraison", "kind": "app"}, {"path": "D:\\Firmwares", "kind": "watched"}],
+        "firmwares": [
+          {
+            "id": "thermostat-1.5.0-beta",
+            "path": "C:\\Livraison\\build_final(2).zip",
+            "fileName": "build_final(2).zip",
+            "folder": 0,
+            "source": "esp-idf-build",
+            "name": "Thermostat",
+            "version": "1.5.0-beta",
+            "variant": null,
+            "chip": "esp32s3",
+            "family": {"kind": "certain", "family": "esp32"},
+            "toolchain": "ESP-IDF 5.3",
+            "builtAt": "2026-09-23T09:00:00",
+            "sizeBytes": 1174938,
+            "addressRanges": 2,
+            "images": [
+              {"address": 0, "name": "bootloader.bin", "size": 21504},
+              {"address": 65536, "name": "thermostat.bin", "size": 1153434}
+            ],
+            "manifest": "flasher_args.json",
+            "checks": [
+              {"status": "ok", "code": "manifest-read", "params": {"chip": "esp32s3", "count": "4", "manifest": "flasher_args.json"}},
+              {"status": "ok", "code": "file-present", "params": {"address": "0x0", "file": "bootloader.bin", "size": "21504"}},
+              {
+                "status": "error",
+                "code": "file-missing",
+                "params": {"address": "0x8000", "dir": "partition_table/", "file": "partition-table.bin"}
+              },
+              {"status": "ok", "code": "file-present", "params": {"address": "0x10000", "file": "thermostat.bin", "size": "1153434"}},
+              {"status": "warning", "code": "nonstandard-name", "params": {}}
+            ],
+            "readme": null
+          }
+        ],
+        "targets": [
+          {
+            "id": "mock:esp32s3:COM4",
+            "family": "esp32",
+            "label": "ESP32-S3",
+            "chip": "esp32s3",
+            "port": "COM4",
+            "link": {"kind": "usb-jtag"},
+            "flashSize": 8388608
+          }
+        ],
+        "issues": []
+      },
+      "next": []
+    }
+  ]
+}

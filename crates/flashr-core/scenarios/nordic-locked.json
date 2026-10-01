@@ -1,0 +1,91 @@
+{
+  "name": "nordic-locked",
+  "stages": [
+    {
+      "snapshot": {
+        "folders": [{"path": "C:\\Livraison", "kind": "app"}, {"path": "D:\\Firmwares", "kind": "watched"}],
+        "firmwares": [
+          {
+            "id": "capteur-porte-2.0.1",
+            "path": "C:\\Livraison\\capteur-porte_2.0.1_nrf52840.hex",
+            "fileName": "capteur-porte_2.0.1_nrf52840.hex",
+            "folder": 0,
+            "source": "file-name",
+            "name": "capteur-porte",
+            "version": "2.0.1",
+            "variant": null,
+            "chip": "nrf52840",
+            "family": {"kind": "certain", "family": "nrf"},
+            "toolchain": null,
+            "builtAt": "2026-08-20T11:05:00",
+            "sizeBytes": 307200,
+            "addressRanges": 1,
+            "images": [{"address": 0, "name": "capteur-porte_2.0.1_nrf52840.hex", "size": 307200}],
+            "manifest": null,
+            "checks": [],
+            "readme": null
+          }
+        ],
+        "targets": [],
+        "issues": [
+          {
+            "kind": "missing-tool",
+            "family": "nrf",
+            "targetLabel": "nRF52840",
+            "locked": "approtect",
+            "tools": [{"name": "SEGGER J-Link", "installed": true}, {"name": "nRF Util · device", "installed": false}],
+            "download": {
+              "title": "nRF Util",
+              "publisher": "Nordic Semiconductor",
+              "versionHint": "7.x",
+              "sizeHint": null,
+              "url": "https://www.nordicsemi.com/Products/Development-tools/nRF-Util"
+            },
+            "installCommand": "nrfutil install device"
+          }
+        ]
+      },
+      "next": [{"on": "recheck", "to": 1}]
+    },
+    {
+      "snapshot": {
+        "folders": [{"path": "C:\\Livraison", "kind": "app"}, {"path": "D:\\Firmwares", "kind": "watched"}],
+        "firmwares": [
+          {
+            "id": "capteur-porte-2.0.1",
+            "path": "C:\\Livraison\\capteur-porte_2.0.1_nrf52840.hex",
+            "fileName": "capteur-porte_2.0.1_nrf52840.hex",
+            "folder": 0,
+            "source": "file-name",
+            "name": "capteur-porte",
+            "version": "2.0.1",
+            "variant": null,
+            "chip": "nrf52840",
+            "family": {"kind": "certain", "family": "nrf"},
+            "toolchain": null,
+            "builtAt": "2026-08-20T11:05:00",
+            "sizeBytes": 307200,
+            "addressRanges": 1,
+            "images": [{"address": 0, "name": "capteur-porte_2.0.1_nrf52840.hex", "size": 307200}],
+            "manifest": null,
+            "checks": [],
+            "readme": null
+          }
+        ],
+        "targets": [
+          {
+            "id": "mock:nrf52840:J-Link",
+            "family": "nrf",
+            "label": "nRF52840",
+            "chip": "nrf52840",
+            "port": "J-Link",
+            "link": {"kind": "probe", "name": "nRF52840 DK"},
+            "flashSize": 1048576
+          }
+        ],
+        "issues": []
+      },
+      "next": []
+    }
+  ]
+}
