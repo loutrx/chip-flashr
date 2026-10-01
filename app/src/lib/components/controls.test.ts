@@ -57,10 +57,36 @@ describe('FamilySelector', () => {
     }
   });
 
+  it('marks every card while the family is ambiguous and not yet picked', () => {
+    render(FamilySelector, { value: null, ambiguous: true, onchange: vi.fn() });
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toHaveClass('ambiguous');
+    }
+  });
+
+  it('drops the ambiguous mark once a family is picked, and shows none by default', async () => {
+    const { rerender } = render(FamilySelector, { value: null, onchange: vi.fn() });
+    for (const button of screen.getAllByRole('button')) expect(button).not.toHaveClass('ambiguous');
+    await rerender({ value: 'stm32', ambiguous: true, onchange: vi.fn() });
+    for (const button of screen.getAllByRole('button')) expect(button).not.toHaveClass('ambiguous');
+  });
+
+  it('tags the suggested family, in its accessible name', () => {
+    const { container } = render(FamilySelector, {
+      value: null,
+      ambiguous: true,
+      suggested: 'stm32',
+      onchange: vi.fn(),
+    });
+    expect(screen.getByRole('button', { name: /Suggéré/ })).toHaveAccessibleName(/STM32/);
+    expect(container.querySelectorAll('.tag.warn')).toHaveLength(1);
+  });
+
   it('follows the UI language', () => {
     setLocale('en');
-    render(FamilySelector, { value: 'nrf', onchange: vi.fn() });
+    render(FamilySelector, { value: null, ambiguous: true, suggested: 'nrf', onchange: vi.fn() });
     expect(screen.getByRole('group', { name: 'Chip type' })).toBeInTheDocument();
     expect(screen.getByText('Nordic · nRF51 to nRF91')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Suggested/ })).toHaveAccessibleName(/Nordic/);
   });
 });

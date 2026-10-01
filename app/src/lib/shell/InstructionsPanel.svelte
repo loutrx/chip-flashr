@@ -5,7 +5,16 @@
   import StatusDot from '../components/StatusDot.svelte';
   import { t } from '../i18n/index.svelte';
 
-  let { open, ontoggle }: { open: boolean; ontoggle: () => void } = $props();
+  let {
+    open,
+    empty,
+    ontoggle,
+  }: {
+    open: boolean;
+    /** The current firmware has no README: no file name, no live badge, an explanation instead. */
+    empty: boolean;
+    ontoggle: () => void;
+  } = $props();
 
   const m = $derived(t().instructions);
   const sample = $derived(m.sample);
@@ -16,36 +25,48 @@
     <div class="head">
       <span class="head-icon"><Icon name="book" size={17} /></span>
       <span class="title">{m.title}</span>
-      <span class="file">{sample.file}</span>
+      {#if !empty}
+        <span class="file">{sample.file}</span>
+      {/if}
       <span class="spacer"></span>
-      <span class="live"><StatusDot tone="ok" size={6} breathe />{m.live}</span>
+      {#if !empty}
+        <span class="live"><StatusDot tone="ok" size={6} breathe />{m.live}</span>
+      {/if}
       <IconButton icon="panelRight" label={m.hide} small onclick={ontoggle} />
     </div>
     <div class="body">
-      <h1>{sample.heading}</h1>
-      <p class="intro">{sample.intro}</p>
-      <h2>{sample.beforeTitle}</h2>
-      <ul>
-        {#each sample.before as item, i (i)}
-          <li>{item}</li>
-        {/each}
-      </ul>
-      <h2>{sample.stepsTitle}</h2>
-      <ol>
-        {#each sample.steps as step, i (i)}
-          <li>
-            {#if typeof step === 'string'}
-              {step}
-            {:else}
-              {step.text} <code>{step.code}</code>.
-            {/if}
-          </li>
-        {/each}
-      </ol>
-      <div class="image"><Icon name="file" size={16} />{sample.image}</div>
-      <Callout tone="warning">{sample.warning}</Callout>
-      <h2>{sample.helpTitle}</h2>
-      <p>{sample.help}</p>
+      {#if empty}
+        <div class="empty">
+          <span class="empty-tile"><Icon name="book" size={22} /></span>
+          <h1 class="empty-title">{m.empty.title}</h1>
+          <p class="intro">{m.empty.body}</p>
+        </div>
+      {:else}
+        <h1>{sample.heading}</h1>
+        <p class="intro">{sample.intro}</p>
+        <h2>{sample.beforeTitle}</h2>
+        <ul>
+          {#each sample.before as item, i (i)}
+            <li>{item}</li>
+          {/each}
+        </ul>
+        <h2>{sample.stepsTitle}</h2>
+        <ol>
+          {#each sample.steps as step, i (i)}
+            <li>
+              {#if typeof step === 'string'}
+                {step}
+              {:else}
+                {step.text} <code>{step.code}</code>.
+              {/if}
+            </li>
+          {/each}
+        </ol>
+        <div class="image"><Icon name="file" size={16} />{sample.image}</div>
+        <Callout tone="warning">{sample.warning}</Callout>
+        <h2>{sample.helpTitle}</h2>
+        <p>{sample.help}</p>
+      {/if}
     </div>
   </aside>
 {:else}
@@ -153,6 +174,29 @@
     background: var(--cf-surface-2);
     font-size: 13px;
     color: var(--cf-faint);
+  }
+  .empty {
+    margin: auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .empty-tile {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--cf-radius-control);
+    background: var(--cf-surface-2);
+    box-shadow: var(--cf-shadow-tile);
+    color: var(--cf-muted);
+    animation: cf-float 3s ease-in-out infinite;
+  }
+  .empty-title {
+    font-size: 18px;
+    letter-spacing: normal;
   }
   .rail {
     width: 48px;

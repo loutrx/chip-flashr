@@ -24,6 +24,9 @@
   .idle {
     background: var(--cf-faint);
   }
+  .busy {
+    background: var(--cf-ink);
+  }
   .breathe {
     animation: cf-breathe 2.2s ease-in-out infinite;
   }

@@ -1,12 +1,19 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
+  import type { IconName } from './icons';
 
-  let { tone = 'warning', children }: { tone?: 'warning' | 'info'; children: Snippet } = $props();
+  let {
+    tone = 'warning',
+    icon,
+    children,
+  }: { tone?: 'warning' | 'info'; icon?: IconName; children: Snippet } = $props();
+
+  const shown = $derived<IconName>(icon ?? (tone === 'warning' ? 'warning' : 'info'));
 </script>
 
 <div class="callout {tone}">
-  <span class="icon"><Icon name={tone === 'warning' ? 'warning' : 'info'} size={17} /></span>
+  <span class="icon"><Icon name={shown} size={17} /></span>
   <span>{@render children()}</span>
 </div>
 

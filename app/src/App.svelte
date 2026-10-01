@@ -153,7 +153,11 @@
       {/if}
     </main>
     {#if view !== 'settings'}
-      <InstructionsPanel open={instructionsOpen} ontoggle={() => (instructionsOpen = !instructionsOpen)} />
+      <InstructionsPanel
+        open={instructionsOpen}
+        empty={false}
+        ontoggle={() => (instructionsOpen = !instructionsOpen)}
+      />
     {/if}
   </div>
   <StatusBar note={t().status.demo} version={info?.version ?? null} />

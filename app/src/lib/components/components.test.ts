@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import Button from './Button.svelte';
+import Callout from './Callout.svelte';
 import Console from './Console.svelte';
 import Icon from './Icon.svelte';
 import IconButton from './IconButton.svelte';
@@ -10,6 +11,8 @@ import Pill from './Pill.svelte';
 import ProgressBar from './ProgressBar.svelte';
 import ResultHero from './ResultHero.svelte';
 import Select from './Select.svelte';
+import StatusDot from './StatusDot.svelte';
+import Tag from './Tag.svelte';
 
 const text = (content: string) => createRawSnippet(() => ({ render: () => `<span>${content}</span>` }));
 
@@ -54,11 +57,64 @@ describe('IconButton', () => {
   });
 });
 
+describe('StatusDot', () => {
+  it('draws one dot per tone, busy included', () => {
+    for (const tone of ['ok', 'warn', 'err', 'idle', 'busy'] as const) {
+      const { container, unmount } = render(StatusDot, { tone });
+      expect(container.querySelector(`.dot.${tone}`)).not.toBeNull();
+      unmount();
+    }
+  });
+
+  it('breathes only when asked', () => {
+    const { container } = render(StatusDot, { tone: 'busy', breathe: true, size: 6 });
+    const dot = container.querySelector('.dot') as HTMLElement;
+    expect(dot).toHaveClass('breathe');
+    expect(dot.style.width).toBe('6px');
+  });
+});
+
 describe('Pill', () => {
   it('shows its text next to a status dot', () => {
     const { container } = render(Pill, { tone: 'ok', breathe: true, children: text('Carte simulée · ESP32-S3') });
     expect(screen.getByText('Carte simulée · ESP32-S3')).toBeInTheDocument();
     expect(container.querySelector('.dot.ok.breathe')).not.toBeNull();
+  });
+
+  it('shows the busy ink dot while programming', () => {
+    const { container } = render(Pill, { tone: 'busy', breathe: true, children: text('ESP32-S3 · programmation…') });
+    expect(screen.getByText('ESP32-S3 · programmation…')).toBeInTheDocument();
+    expect(container.querySelector('.dot.busy.breathe')).not.toBeNull();
+  });
+});
+
+describe('Tag', () => {
+  it('is neutral by default', () => {
+    const { container } = render(Tag, { children: text('prod') });
+    expect(screen.getByText('prod')).toBeInTheDocument();
+    expect(container.querySelector('.tag')).not.toHaveClass('warn');
+  });
+
+  it('takes the warn tone', () => {
+    const { container } = render(Tag, { tone: 'warn', children: text('Suggéré') });
+    expect(container.querySelector('.tag.warn')).toHaveTextContent('Suggéré');
+  });
+});
+
+describe('Callout', () => {
+  it('shows the icon of its tone', () => {
+    const { container, unmount } = render(Callout, { tone: 'warning', children: text('Attention') });
+    expect(container.querySelector('.callout.warning [data-icon="warning"]')).not.toBeNull();
+    unmount();
+    const info = render(Callout, { tone: 'info', children: text('Note') });
+    expect(info.container.querySelector('.callout.info [data-icon="info"]')).not.toBeNull();
+  });
+
+  it('takes an icon independent of its tone', () => {
+    const { container } = render(Callout, { tone: 'warning', icon: 'info', children: text('Confirmez') });
+    expect(container.querySelector('.callout.warning [data-icon="info"]')).not.toBeNull();
+    expect(container.querySelector('[data-icon="warning"]')).toBeNull();
+    expect(screen.getByText('Confirmez')).toBeInTheDocument();
   });
 });
 

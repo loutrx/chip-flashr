@@ -2,6 +2,7 @@
   import { t } from '../i18n/index.svelte';
   import type { Family } from '../types';
   import Icon from './Icon.svelte';
+  import Tag from './Tag.svelte';
 
   const FAMILIES: readonly Family[] = ['esp32', 'stm32', 'nrf'];
   /** The short mark drawn in each card's tile, as in the mockups. */
@@ -10,8 +11,19 @@
   let {
     value,
     disabled = false,
+    ambiguous = false,
+    suggested = null,
     onchange,
-  }: { value: Family | null; disabled?: boolean; onchange: (family: Family) => void } = $props();
+  }: {
+    value: Family | null;
+    disabled?: boolean;
+    /** The firmware does not say its family: every card asks to be considered until one is picked. */
+    ambiguous?: boolean;
+    suggested?: Family | null;
+    onchange: (family: Family) => void;
+  } = $props();
+
+  const asking = $derived(ambiguous && value === null);
 </script>
 
 <div class="families" role="group" aria-label={t().families.label}>
@@ -21,6 +33,7 @@
       type="button"
       class="family"
       class:selected
+      class:ambiguous={asking}
       aria-pressed={selected}
       {disabled}
       onclick={() => onchange(family)}
@@ -32,6 +45,8 @@
       </span>
       {#if selected}
         <span class="check"><Icon name="check" size={14} strokeWidth={2.5} /></span>
+      {:else if family === suggested}
+        <span class="suggested"><Tag tone="warn">{t().families.suggested}</Tag></span>
       {/if}
     </button>
   {/each}
@@ -76,6 +91,11 @@
   .family:disabled {
     cursor: not-allowed;
     opacity: 0.6;
+  }
+  /* The 2 px border takes 1 px of padding so the content does not move (ChoixPuce page). */
+  .ambiguous {
+    padding: 0 14px;
+    border: 2px solid var(--cf-warn);
   }
   .selected {
     padding: 0 14px;
@@ -132,9 +152,14 @@
     color: var(--cf-on-primary);
     animation: cf-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both;
   }
+  .suggested {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: flex;
+  }
   /*
    * Tile, name and check need about 150 px of content: below that (the panel open near the
-   * 960 px minimum window width), the check sits on the card's corner, clear of the name.
+   * 960 px minimum window width), the check and the tag sit on the card's top edge, clear of the name.
    */
   @container (max-width: 160px) {
     .check {
@@ -142,6 +167,11 @@
       top: -9px;
       right: -9px;
       box-shadow: 0 0 0 3px var(--cf-ground);
+    }
+    .suggested {
+      position: absolute;
+      top: -12px;
+      right: 10px;
     }
   }
 </style>

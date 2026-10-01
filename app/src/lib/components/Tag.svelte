@@ -1,10 +1,14 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  let { mono = false, children }: { mono?: boolean; children: Snippet } = $props();
+  let {
+    mono = false,
+    tone = 'neutral',
+    children,
+  }: { mono?: boolean; tone?: 'neutral' | 'warn'; children: Snippet } = $props();
 </script>
 
-<span class="tag" class:mono>{@render children()}</span>
+<span class="tag {tone}" class:mono>{@render children()}</span>
 
 <style>
   .tag {
@@ -19,6 +23,11 @@
     color: var(--cf-muted);
     font: 500 12px var(--cf-font-ui);
     white-space: nowrap;
+  }
+  .warn {
+    background: var(--cf-warn-weak);
+    border-color: var(--cf-warn-weak);
+    color: var(--cf-warn);
   }
   .mono {
     font-family: var(--cf-font-mono);

@@ -38,20 +38,42 @@ describe('TopBar', () => {
 describe('InstructionsPanel', () => {
   it('shows the sample instructions when open', async () => {
     const ontoggle = vi.fn();
-    render(InstructionsPanel, { open: true, ontoggle });
-    expect(screen.getByRole('complementary', { name: 'Instructions' })).toHaveTextContent('Mise à jour du thermostat');
+    render(InstructionsPanel, { open: true, empty: false, ontoggle });
+    const panel = screen.getByRole('complementary', { name: 'Instructions' });
+    expect(panel).toHaveTextContent('Mise à jour du thermostat');
+    expect(panel).toHaveTextContent('LISEZMOI.md');
+    expect(panel).toHaveTextContent('Suivi en direct');
     expect(screen.getByText('J3 · PROG')).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Masquer les instructions' }));
+    expect(ontoggle).toHaveBeenCalledOnce();
+  });
+
+  it('says there are no instructions when the firmware has no README', async () => {
+    const ontoggle = vi.fn();
+    render(InstructionsPanel, { open: true, empty: true, ontoggle });
+    const panel = screen.getByRole('complementary', { name: 'Instructions' });
+    expect(screen.getByRole('heading', { name: 'Aucune instruction pour ce firmware' })).toBeInTheDocument();
+    expect(panel).toHaveTextContent('à côté de l’application ou dans le zip');
+    expect(panel).not.toHaveTextContent('Suivi en direct');
+    expect(panel).not.toHaveTextContent('Mise à jour du thermostat');
+    expect(screen.queryByText('LISEZMOI.md')).toBeNull();
     await fireEvent.click(screen.getByRole('button', { name: 'Masquer les instructions' }));
     expect(ontoggle).toHaveBeenCalledOnce();
   });
 
   it('folds into a rail when closed', async () => {
     const ontoggle = vi.fn();
-    render(InstructionsPanel, { open: false, ontoggle });
+    render(InstructionsPanel, { open: false, empty: false, ontoggle });
     expect(screen.getByRole('complementary', { name: 'Instructions masquées' })).toBeInTheDocument();
     expect(screen.queryByText('Mise à jour du thermostat')).toBeNull();
     await fireEvent.click(screen.getByRole('button', { name: 'Afficher les instructions' }));
     expect(ontoggle).toHaveBeenCalledOnce();
+  });
+
+  it('follows the UI language in the empty state', () => {
+    setLocale('en');
+    render(InstructionsPanel, { open: true, empty: true, ontoggle: vi.fn() });
+    expect(screen.getByRole('heading', { name: 'No instructions for this firmware' })).toBeInTheDocument();
   });
 });
 
@@ -86,9 +108,19 @@ describe('SettingsView', () => {
 
 describe('StatusBar', () => {
   it('shows the note and the version', () => {
-    render(StatusBar, { note: 'Démo · carte simulée', version: '0.1.0' });
-    expect(screen.getByText('Démo · carte simulée')).toBeInTheDocument();
+    const { container } = render(StatusBar, { note: 'Surveillance : C:\\Livraison', version: '0.1.0' });
+    expect(screen.getByText('Surveillance : C:\\Livraison')).toBeInTheDocument();
     expect(screen.getByText('v0.1.0')).toBeInTheDocument();
+    expect(container.querySelector('.warning')).toBeNull();
+  });
+
+  it('shows a warning just before the version', () => {
+    const warning = 'Scénario inconnu : demo';
+    const { container } = render(StatusBar, { note: 'Simulation · scénario default', warning, version: '0.1.0' });
+    const shown = container.querySelector('.warning') as HTMLElement;
+    expect(shown).toHaveTextContent(warning);
+    expect(shown.querySelector('[data-icon="warning"]')).not.toBeNull();
+    expect(shown.nextElementSibling).toHaveTextContent('v0.1.0');
   });
 });
 
