@@ -6,9 +6,10 @@ import { en } from './lib/i18n/en';
 import { fr } from './lib/i18n/fr';
 import { setLocale } from './lib/i18n/index.svelte';
 import type { Backend } from './lib/ipc';
-import { createPreviewBackend, type PreviewOptions } from './lib/preview/previewBackend';
+import { createPreviewBackend, createPreviewBackendOn, type PreviewOptions } from './lib/preview/previewBackend';
 import { SCENARIOS } from './lib/preview/scenarios';
 import { SETTINGS_KEY } from './lib/settings';
+import type { Scenario, Snapshot } from './lib/types';
 
 /** Long enough for any scenario firmware at 15 ms per 4 KiB chunk. */
 const FLASH_MS = 20_000;
@@ -396,5 +397,59 @@ describe('App: startup failure', () => {
     await renderApp(backend);
     expect(programButton()).toBeEnabled();
     expect(screen.queryByRole('heading', { name: fr.startup.title })).toBeNull();
+  });
+});
+
+describe('App: the world changes under a job', () => {
+  const base = SCENARIOS.single.stages[0].snapshot;
+
+  function twoStages(second: Snapshot, on: Scenario['stages'][number]['next'][number]['on']): Scenario {
+    return {
+      name: 'race',
+      stages: [
+        { snapshot: base, next: [{ on, to: 1 }] },
+        { snapshot: second, next: [] },
+      ],
+    };
+  }
+
+  it('shows 03 and no Programmer when the board leaves after a success', async () => {
+    const backend = createPreviewBackendOn(twoStages({ ...base, targets: [] }, 'recheck'), null, {
+      chunkDelayMs: 15,
+      failAtPercent: null,
+      scenario: null,
+    });
+    await renderApp(backend);
+    await fireEvent.click(programButton());
+    await settle(FLASH_MS);
+    expect(successHeading()).toBeInTheDocument();
+
+    await backend.recheck();
+    await settle();
+    // The finished job still owns the screen; the board leaving does not change it.
+    expect(successHeading()).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: fr.success.again }));
+    expect(screen.getByText(fr.provisional.title['waiting-board'])).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Programmer' })).toBeNull();
+  });
+
+  it('keeps the job on its own firmware when the snapshot changes mid-flash', async () => {
+    const other = { ...base.firmwares[0], id: 'other-9.9.9', name: 'Autrefois', version: '9.9.9' };
+    const backend = createPreviewBackendOn(
+      twoStages({ ...base, firmwares: [other] }, { afterMs: 1_000 }),
+      null,
+      { chunkDelayMs: 15, failAtPercent: null, scenario: null },
+    );
+    await renderApp(backend);
+    await fireEvent.click(programButton());
+    await settle(1_500);
+    expect(screen.getByText(fr.progress.title)).toBeInTheDocument();
+    expect(document.body.textContent).toContain('Thermostat');
+
+    await settle(FLASH_MS);
+    expect(successHeading()).toBeInTheDocument();
+    expect(document.body.textContent).toContain('Thermostat');
+    expect(document.body.textContent).not.toContain('Autrefois');
   });
 });
