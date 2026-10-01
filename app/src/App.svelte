@@ -78,7 +78,7 @@
   const screenId = $derived(screenOf(snapshot, choices, job));
 
   const pillTarget = $derived(job.status !== 'idle' ? jobTarget : (target ?? snapshot?.targets[0] ?? null));
-  const pill = $derived(pillText(screenId, pillTarget, issue, t()));
+  const pill = $derived(pillText(screenId, pillTarget, issue, t(), job.status === 'failure' ? job.error.code : undefined));
   const shownFirmware = $derived(job.status !== 'idle' ? jobFirmware : firmware);
   const showInstructions = $derived(view !== 'settings' && !(mode === 'simple' && NO_INSTRUCTIONS.includes(screenId)));
 

@@ -3,7 +3,7 @@ import { target } from './app/fixtures';
 import type { ScreenId } from './app/screen';
 import { en } from './i18n/en';
 import { fr } from './i18n/fr';
-import { boardName, linkText, pillText, type PillState } from './targets';
+import { linkText, pillText, type PillState } from './targets';
 import type { DeviceIssue, Download, Target } from './types';
 
 /** The fixture's simulated ESP32-S3 on COM4, USB-JTAG, 8 MiB of flash. */
@@ -60,17 +60,6 @@ const TABLE = {
   'external-tool': [null, locked, { tone: 'warn', text: 'nRF52840 · verrouillée', breathe: false }],
 } satisfies Record<ScreenId, readonly [Target | null, DeviceIssue | null, PillState]>;
 
-describe('boardName', () => {
-  it('names simulated boards in the UI language', () => {
-    expect(boardName(esp, fr)).toBe('Carte simulée · ESP32-S3');
-    expect(boardName(esp, en)).toBe('Simulated board · ESP32-S3');
-  });
-
-  it('keeps the label of a real board as the backend reported it', () => {
-    expect(boardName({ ...esp, id: 'serial:COM4' }, fr)).toBe('ESP32-S3');
-  });
-});
-
 describe('linkText', () => {
   it('words each kind of link in the UI language', () => {
     expect(linkText({ kind: 'usb-jtag' }, fr)).toBe(fr.board.link.usbJtag);
@@ -91,6 +80,16 @@ describe('pillText', () => {
     expect(pillText('firmware-list', null, null, fr)).toEqual(noBoard);
     expect(pillText('programming', null, null, fr)).toEqual(noBoard);
     expect(pillText('failure', null, null, fr)).toEqual(noBoard);
+  });
+
+  it('keeps a board that is still there neutral after a cancelled job', () => {
+    expect(pillText('failure', esp, null, fr, 'cancelled')).toEqual({
+      tone: 'ok',
+      text: 'ESP32-S3 · COM4',
+      breathe: false,
+    });
+    expect(pillText('failure', esp, null, fr, 'device-error')).toEqual(TABLE.failure[2]);
+    expect(pillText('failure', null, null, fr, 'cancelled')).toEqual(noBoard);
   });
 
   it('names a missing tool on a chip that is not locked', () => {

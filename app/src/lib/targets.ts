@@ -1,12 +1,7 @@
 import type { ScreenId } from './app/screen';
 import type { Tone } from './components/tones';
 import type { Messages } from './i18n/fr';
-import type { DeviceIssue, Link, Target } from './types';
-
-/** Simulated boards (`mock:…`) are named as such in the UI language; real ones keep the backend's label (spec D8). */
-export function boardName(target: Target, m: Messages): string {
-  return target.id.startsWith('mock:') ? m.board.simulated(target.label) : target.label;
-}
+import type { DeviceIssue, ErrorCode, Link, Target } from './types';
 
 /** How the board is attached, as the board card and the report word it: "USB-JTAG intégré", "sonde ST-Link". */
 export function linkText(link: Link, m: Messages): string {
@@ -31,8 +26,17 @@ function noBoard(m: Messages): PillState {
   return { tone: 'idle', text: m.topbar.noBoard, breathe: false };
 }
 
-/** The spec's pill table ("Top-bar pill per screen"). A screen that names the board falls back to "Aucune carte" without one. */
-export function pillText(screen: ScreenId, target: Target | null, issue: DeviceIssue | null, m: Messages): PillState {
+/**
+ * The spec's pill table ("Top-bar pill per screen"). A screen that names the board falls back to "Aucune carte" without one.
+ * `code` is the error of a failed job: a cancel is the user's own doing, so the board stays neutral.
+ */
+export function pillText(
+  screen: ScreenId,
+  target: Target | null,
+  issue: DeviceIssue | null,
+  m: Messages,
+  code?: ErrorCode,
+): PillState {
   switch (screen) {
     case 'loading':
       return { tone: 'idle', text: null, breathe: false };
@@ -48,6 +52,7 @@ export function pillText(screen: ScreenId, target: Target | null, issue: DeviceI
     case 'programming':
       return target ? { tone: 'busy', text: m.pill.busy(target.label), breathe: true } : noBoard(m);
     case 'failure':
+      if (target && code === 'cancelled') return { tone: 'ok', text: m.pill.board(target.label, target.port), breathe: false };
       return target ? { tone: 'err', text: m.pill.error(target.label), breathe: false } : noBoard(m);
     case 'missing-driver':
       return { tone: 'warn', text: m.pill.missingDriver, breathe: false };
