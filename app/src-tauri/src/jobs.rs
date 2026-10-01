@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use flashr_core::{
-    CancelToken, ErrorCode, FlashBackend, FlashPlan, FlashReport, ProgressSink, Target,
-    UserFacingError,
+    CancelToken, ErrorCode, FlashBackend, FlashPlan, FlashReport, ProgressEvent, ProgressSink,
+    Target, UserFacingError,
 };
 
 /// At most one flash job at a time; holds the running job's cancel token.
@@ -52,7 +52,21 @@ impl Drop for RunningJob {
     }
 }
 
+/// Forwards every event and keeps the last one, so a failure can say where it happened.
+struct LastEvent<'a> {
+    inner: &'a dyn ProgressSink,
+    last: Mutex<Option<ProgressEvent>>,
+}
+
+impl ProgressSink for LastEvent<'_> {
+    fn report(&self, event: ProgressEvent) {
+        *self.last.lock().unwrap_or_else(|e| e.into_inner()) = Some(event.clone());
+        self.inner.report(event);
+    }
+}
+
 /// Run one job on the current thread and translate the outcome for the UI.
+/// A failure carries the phase and percent of the last progress event, when there was one.
 pub fn run_flash_job(
     backend: &dyn FlashBackend,
     target: &Target,
@@ -60,9 +74,22 @@ pub fn run_flash_job(
     sink: &dyn ProgressSink,
     cancel: &CancelToken,
 ) -> Result<FlashReport, UserFacingError> {
-    backend
-        .flash(target, plan, sink, cancel)
-        .map_err(|e| UserFacingError::from(&e))
+    let tracker = LastEvent {
+        inner: sink,
+        last: Mutex::new(None),
+    };
+    let result = backend.flash(target, plan, &tracker, cancel);
+    let last = tracker.last.into_inner().unwrap_or_else(|e| e.into_inner());
+    result.map_err(|e| {
+        let error = UserFacingError::from(&e);
+        match last {
+            Some(event) => {
+                let percent = event.percent();
+                error.at(event.phase, percent)
+            }
+            None => error,
+        }
+    })
 }
 
 #[cfg(test)]
@@ -131,6 +158,70 @@ mod tests {
         assert!(
             slot.start().is_ok(),
             "the slot must be free once the failed job is dropped"
+        );
+    }
+
+    #[test]
+    fn a_failure_says_where_the_job_stopped() {
+        let failing = MockBackend {
+            fail_at_percent: Some(41),
+            ..MockBackend::default()
+        };
+        let sink = RecordingSink::default();
+        let err = run_flash_job(
+            &failing,
+            &esp(),
+            &thermostat_plan(),
+            &sink,
+            &CancelToken::new(),
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::DeviceError);
+        // The last event before the failing block: 483 328 of 1 186 202 bytes.
+        assert_eq!(err.percent, Some(40));
+        assert_eq!(
+            err.phase,
+            Some(Phase::Writing {
+                index: 3,
+                count: 4,
+                label: "thermostat.bin".into(),
+                address: 0x1_0000
+            })
+        );
+        assert_eq!(sink.events().last().map(|e| e.percent()), Some(40));
+    }
+
+    #[test]
+    fn a_failure_before_any_progress_has_no_position() {
+        let err = run_flash_job(
+            &MockBackend::default(),
+            &esp(),
+            &FlashPlan::new(Family::Esp32, vec![]),
+            &RecordingSink::default(),
+            &CancelToken::new(),
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::InvalidPlan);
+        assert_eq!((err.phase, err.percent), (None, None));
+    }
+
+    #[test]
+    fn a_successful_job_forwards_every_event() {
+        let sink = RecordingSink::default();
+        let plan = thermostat_plan();
+        run_flash_job(
+            &MockBackend::default(),
+            &esp(),
+            &plan,
+            &sink,
+            &CancelToken::new(),
+        )
+        .unwrap();
+        let events = sink.events();
+        assert_eq!(events.first().map(|e| &e.phase), Some(&Phase::Connecting));
+        assert_eq!(
+            events.last().map(|e| e.bytes_done),
+            Some(plan.total_bytes())
         );
     }
 

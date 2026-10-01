@@ -1,17 +1,20 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use flashr_core::{FlashBackend, MockBackend, Target};
+use flashr_core::{MockBackend, SimulatedWorld, resolve_scenario};
 
 use crate::jobs::JobSlot;
 
 /// Everything the commands share. Managed by Tauri.
 pub struct AppState {
-    pub backends: Vec<Arc<dyn FlashBackend>>,
+    pub mock: Arc<MockBackend>,
+    pub world: Arc<Mutex<SimulatedWorld>>,
+    /// The unknown scenario name that was asked for, when the app fell back to `default`.
+    pub scenario_warning: Option<String>,
     pub jobs: Arc<JobSlot>,
 }
 
-/// Mock tuned for the demo screen. `CHIP_FLASHR_MOCK_FAIL_AT` (0–100) injects a failure.
+/// Mock tuned to be watched. `CHIP_FLASHR_MOCK_FAIL_AT` (0–100) injects a failure.
 pub fn mock_from_env(fail_at: Option<&str>) -> MockBackend {
     MockBackend {
         chunk_delay: Duration::from_millis(15),
@@ -22,56 +25,57 @@ pub fn mock_from_env(fail_at: Option<&str>) -> MockBackend {
 }
 
 impl AppState {
-    /// Until real backends land (plan 6), the app runs on the mock.
+    /// Until real backends land (plan 6), the app runs on the mock and a simulated world.
     pub fn from_env() -> Self {
-        let mock = mock_from_env(std::env::var("CHIP_FLASHR_MOCK_FAIL_AT").ok().as_deref());
+        Self::new(
+            std::env::var("CHIP_FLASHR_SCENARIO").ok().as_deref(),
+            std::env::var("CHIP_FLASHR_MOCK_FAIL_AT").ok().as_deref(),
+        )
+    }
+
+    /// `from_env` with explicit values, for tests.
+    pub fn new(scenario: Option<&str>, fail_at: Option<&str>) -> Self {
+        let (scenario, scenario_warning) = resolve_scenario(scenario);
         Self {
-            backends: vec![Arc::new(mock)],
+            mock: Arc::new(mock_from_env(fail_at)),
+            world: Arc::new(Mutex::new(SimulatedWorld::new(scenario))),
+            scenario_warning,
             jobs: Arc::default(),
         }
-    }
-
-    /// Every reachable target across backends. A backend that fails to enumerate is skipped.
-    pub fn list_targets(&self) -> Vec<Target> {
-        self.backends
-            .iter()
-            .flat_map(|b| b.discover().unwrap_or_default())
-            .collect()
-    }
-
-    pub fn find(&self, target_id: &str) -> Option<(Arc<dyn FlashBackend>, Target)> {
-        self.backends.iter().find_map(|b| {
-            b.discover()
-                .ok()?
-                .into_iter()
-                .find(|t| t.id == target_id)
-                .map(|t| (Arc::clone(b), t))
-        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::lock_world;
 
     #[test]
-    fn lists_the_three_simulated_boards() {
-        let ids: Vec<_> = AppState::from_env()
-            .list_targets()
-            .into_iter()
-            .map(|t| t.id)
-            .collect();
-        assert_eq!(ids, ["mock:esp32", "mock:stm32", "mock:nrf"]);
+    fn plays_the_requested_scenario() {
+        let state = AppState::new(Some("waiting-board"), None);
+        assert_eq!(lock_world(&state.world).scenario_name(), "waiting-board");
+        assert_eq!(state.scenario_warning, None);
     }
 
     #[test]
-    fn finds_a_target_by_id_and_rejects_unknown_ids() {
-        let state = AppState::from_env();
-        assert_eq!(
-            state.find("mock:nrf").map(|(_, t)| t.label),
-            Some("nRF52840".to_string())
-        );
-        assert!(state.find("serial:COM99").is_none());
+    fn an_unknown_scenario_falls_back_to_default_with_a_warning() {
+        let state = AppState::new(Some("nope"), None);
+        assert_eq!(lock_world(&state.world).scenario_name(), "default");
+        assert_eq!(state.scenario_warning.as_deref(), Some("nope"));
+    }
+
+    #[test]
+    fn no_scenario_means_default_without_warning() {
+        let state = AppState::new(None, None);
+        assert_eq!(lock_world(&state.world).scenario_name(), "default");
+        assert_eq!(state.scenario_warning, None);
+    }
+
+    #[test]
+    fn the_failure_switch_combines_with_any_scenario() {
+        let state = AppState::new(Some("single"), Some("41"));
+        assert_eq!(state.mock.fail_at_percent, Some(41));
+        assert_eq!(lock_world(&state.world).scenario_name(), "single");
     }
 
     #[test]
